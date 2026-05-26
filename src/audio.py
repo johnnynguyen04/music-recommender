@@ -48,10 +48,18 @@ def get_client():
     return spotipy.Spotify(client_credentials_manager=auth, requests_timeout=15)
 
 
+class PlaylistAuthError(RuntimeError):
+    """raised when the playlist endpoint rejects client-credentials auth.
+
+    spotify locked /playlists/{id}/items behind user auth for development-mode
+    apps. callers should catch this and fall back to the search input.
+    """
+
+
 def fetch_playlist_tracks(url_or_id: str, client: Any | None = None) -> list[FetchedTrack]:
     """fetch tracks from a public spotify playlist by URL or id.
 
-    returns [] if no credentials are configured or the playlist is private.
+    raises PlaylistAuthError on 401; returns [] if no credentials are configured.
     """
     sp = client or get_client()
     if sp is None:
@@ -60,28 +68,67 @@ def fetch_playlist_tracks(url_or_id: str, client: Any | None = None) -> list[Fet
     pid = parse_playlist_id(url_or_id)
     out: list[FetchedTrack] = []
     offset = 0
-    while True:
-        page = sp.playlist_items(
-            pid,
-            limit=100,
-            offset=offset,
-            fields="items(track(id,name,artists(name),album(name))),next",
-        )
-        for item in page.get("items", []) or []:
-            tr = item.get("track") or {}
-            tid = tr.get("id")
-            if not tid:
-                continue
-            artists = tr.get("artists") or [{}]
-            out.append(
-                FetchedTrack(
-                    track_id=tid,
-                    track_name=tr.get("name", "") or "",
-                    artist_name=(artists[0] or {}).get("name", "") or "",
-                    album_name=(tr.get("album") or {}).get("name", "") or "",
-                )
+    try:
+        while True:
+            page = sp.playlist_items(
+                pid,
+                limit=100,
+                offset=offset,
+                fields="items(track(id,name,artists(name),album(name))),next",
             )
-        if not page.get("next"):
-            break
-        offset += 100
+            for item in page.get("items", []) or []:
+                tr = item.get("track") or {}
+                tid = tr.get("id")
+                if not tid:
+                    continue
+                artists = tr.get("artists") or [{}]
+                out.append(
+                    FetchedTrack(
+                        track_id=tid,
+                        track_name=tr.get("name", "") or "",
+                        artist_name=(artists[0] or {}).get("name", "") or "",
+                        album_name=(tr.get("album") or {}).get("name", "") or "",
+                    )
+                )
+            if not page.get("next"):
+                break
+            offset += 100
+    except Exception as e:
+        msg = str(e)
+        if "401" in msg or "Valid user authentication" in msg:
+            raise PlaylistAuthError(
+                "spotify blocks playlist reads for development-mode apps. "
+                "use the search input instead."
+            ) from e
+        raise
+    return out
+
+
+def search_tracks(query: str, limit: int = 8, client: Any | None = None) -> list[FetchedTrack]:
+    """find tracks via spotify /search. works under client-credentials auth.
+
+    pass natural language like "bohemian rhapsody" or "tame impala the less i know".
+    """
+    sp = client or get_client()
+    if sp is None or not query.strip():
+        return []
+    try:
+        resp = sp.search(query, type="track", limit=limit)
+    except Exception:
+        return []
+    items = (resp.get("tracks") or {}).get("items") or []
+    out: list[FetchedTrack] = []
+    for tr in items:
+        tid = tr.get("id")
+        if not tid:
+            continue
+        artists = tr.get("artists") or [{}]
+        out.append(
+            FetchedTrack(
+                track_id=tid,
+                track_name=tr.get("name", "") or "",
+                artist_name=(artists[0] or {}).get("name", "") or "",
+                album_name=(tr.get("album") or {}).get("name", "") or "",
+            )
+        )
     return out
