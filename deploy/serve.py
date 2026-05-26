@@ -1,34 +1,68 @@
-"""minimal FastAPI inference endpoint.
+"""FastAPI inference server. backs the Next.js demo and the FastAPI container.
 
-three routes:
-  GET  /health                 -> liveness
-  POST /recommend              -> body: { playlist_id, recent_track_ids?, model?, k? }
-  GET  /models                 -> which models are loaded
+routes:
+  GET  /health                         liveness
+  GET  /models                         which models are loaded
+  POST /recommend                      body: { playlist_id, recent_track_ids?, model?, k? }
+  GET  /search?q=...                   search MPD vocab; returns tracks with album art
+  GET  /playlists/sample?n=25          known playlist ids with a preview of their tracks
+  GET  /playlists/{pid}/tracks?n=5     first n tracks of a known playlist
+  GET  /tracks/{tid}/art               album art URL for a single track (cached)
+  POST /tracks/art                     batch album art lookup (body: { track_ids: [...] })
+  GET  /metrics                        all metrics JSONs in one blob
 
-artifacts are pulled from S3 at boot if env vars are set, else loaded from
-local paths.
+album art is fetched from Spotify on demand and cached on disk under `artifacts/art_cache.json`.
+
+run locally:
+  uv run uvicorn deploy.serve:app --reload --port 8000
 """
 
 from __future__ import annotations
 
+import json
 import os
+import sys
 from pathlib import Path
 from typing import Literal
 
-import boto3
 import pandas as pd
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from src import neural
-from src.inference import Recommender, load_features_csv
+# resolve project root so the server can run from anywhere
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+load_dotenv(ROOT / ".env")
 
-ARTIFACTS = Path(os.environ.get("ARTIFACTS_DIR", "/app/artifacts"))
-DATA_PROC = Path(os.environ.get("DATA_PROC_DIR", "/app/data/processed"))
-DATA_AUDIO = Path(os.environ.get("DATA_AUDIO_CSV", "/app/data/audio_features/dataset.csv"))
+from src import audio, neural  # noqa: E402
+from src.inference import Recommender, load_features_csv, load_hybrid_alpha  # noqa: E402
 
-app = FastAPI(title="music-recommender")
+ARTIFACTS = Path(os.environ.get("ARTIFACTS_DIR", str(ROOT / "artifacts")))
+DATA_PROC = Path(os.environ.get("DATA_PROC_DIR", str(ROOT / "data" / "processed")))
+DATA_AUDIO = Path(os.environ.get("DATA_AUDIO_CSV", str(ROOT / "data" / "audio_features" / "dataset.csv")))
+RESULTS_M = Path(os.environ.get("RESULTS_METRICS", str(ROOT / "results" / "metrics")))
+ART_CACHE = ARTIFACTS / "art_cache.json"
+
+CORS_ALLOWED = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    os.environ.get("FRONTEND_ORIGIN", "*"),
+]
+
+app = FastAPI(title="music-recommender API")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ALLOWED,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 _rec: Recommender | None = None
+_tracks: pd.DataFrame | None = None
+_art_cache: dict[str, str | None] = {}
+_spotify = None  # spotipy client; lazy
 
 
 class RecommendIn(BaseModel):
@@ -39,33 +73,52 @@ class RecommendIn(BaseModel):
     k: int = 10
 
 
+class ArtBatchIn(BaseModel):
+    track_ids: list[str]
+
+
 @app.on_event("startup")
 def _load():
-    global _rec
+    global _rec, _tracks, _art_cache, _spotify
     _maybe_download_from_s3()
     ncf_path = ARTIFACTS / "ncf.pt"
     tracks_path = DATA_PROC / "tracks.parquet"
     if not (ncf_path.exists() and tracks_path.exists()):
+        print(f"[startup] artifacts not found (ncf={ncf_path.exists()}, tracks={tracks_path.exists()})")
         return
+    _tracks = pd.read_parquet(tracks_path)
     ncf = neural.load(ncf_path)
-    tracks = pd.read_parquet(tracks_path)
     feats = load_features_csv(DATA_AUDIO) if DATA_AUDIO.exists() else {}
+    alpha = load_hybrid_alpha(RESULTS_M / "hybrid.json")
     _rec = Recommender(
         cf_model=None, train_matrix=None, ncf=ncf,
-        tracks=tracks, features_by_id=feats,
+        tracks=_tracks, features_by_id=feats, hybrid_alpha=alpha,
     )
+    if ART_CACHE.exists():
+        try:
+            _art_cache = json.loads(ART_CACHE.read_text())
+        except json.JSONDecodeError:
+            _art_cache = {}
+    _spotify = audio.get_client()
+    print(f"[startup] loaded. {len(_tracks):,} tracks, alpha={alpha}, "
+          f"art_cache={len(_art_cache):,}, spotify={'on' if _spotify else 'off'}")
 
 
 def _maybe_download_from_s3():
     bucket = os.environ.get("MODEL_BUCKET")
     if not bucket:
         return
+    import boto3
     s3 = boto3.client("s3", region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
+    target = ARTIFACTS / "ncf.pt"
+    if target.exists():
+        return
     try:
-        s3.download_file(bucket, "ncf.pt", str(ARTIFACTS / "ncf.pt"))
+        s3.download_file(bucket, "ncf.pt", str(target))
+        print(f"[startup] pulled ncf.pt from s3://{bucket}/")
     except Exception as e:
-        print(f"s3 download skipped: {e}")
+        print(f"[startup] s3 download skipped: {e}")
 
 
 @app.get("/health")
@@ -77,23 +130,186 @@ def health():
 def models():
     if _rec is None:
         return {"available": []}
-    out = []
-    if _rec.ncf is not None: out += ["neural", "hybrid"]
-    return {"available": out}
+    return {"available": ["neural", "hybrid"]}
 
 
 @app.post("/recommend")
 def recommend(body: RecommendIn):
     if _rec is None:
         raise HTTPException(status_code=503, detail="model not loaded")
-    return {
-        "model": body.model,
-        "playlist_id": body.playlist_id,
-        "recommendations": _rec.recommend(
-            body.playlist_id,
-            recent_track_ids=body.recent_track_ids,
-            seen_track_ids=set(body.seen_track_ids),
-            model=body.model,
-            k=body.k,
-        ),
-    }
+    recs = _rec.recommend(
+        body.playlist_id,
+        recent_track_ids=body.recent_track_ids,
+        seen_track_ids=set(body.seen_track_ids),
+        model=body.model,
+        k=body.k,
+    )
+    # attach album art URLs (best-effort)
+    art = _batch_art([r["track_id"] for r in recs])
+    for r in recs:
+        r["art_url"] = art.get(r["track_id"])
+    return {"model": body.model, "playlist_id": body.playlist_id, "recommendations": recs}
+
+
+@app.get("/search")
+def search(q: str, limit: int = 8):
+    if _tracks is None:
+        raise HTTPException(status_code=503, detail="catalog not loaded")
+    if not q.strip():
+        return {"results": []}
+    needle = q.strip().lower()
+    haystack = (_tracks["artist_name"].fillna("").str.lower() + " " +
+                _tracks["track_name"].fillna("").str.lower())
+    hits = _tracks[haystack.str.contains(needle, regex=False, na=False)].head(limit)
+    items = hits[["track_id", "artist_name", "track_name", "album_name"]].to_dict("records")
+    art = _batch_art([i["track_id"] for i in items])
+    for i in items:
+        i["art_url"] = art.get(i["track_id"])
+    return {"results": items}
+
+
+@app.get("/playlists/sample")
+def playlists_sample(n: int = 25):
+    if _rec is None or _rec.ncf is None:
+        raise HTTPException(status_code=503, detail="model not loaded")
+    pids = list(_rec.ncf.playlist_index.keys())[:n]
+    inter = _interactions_cache()
+    out = []
+    for pid in pids:
+        track_ids = inter.get(pid, [])[:3]
+        preview = []
+        if track_ids and _tracks is not None:
+            rows = _tracks.set_index("track_id").reindex(track_ids).reset_index()
+            for _, r in rows.iterrows():
+                preview.append({
+                    "artist": r.get("artist_name"),
+                    "title": r.get("track_name"),
+                })
+        out.append({"playlist_id": pid, "preview": preview})
+    return {"playlists": out}
+
+
+@app.get("/playlists/{pid}/tracks")
+def playlist_tracks(pid: str, n: int = 5):
+    inter = _interactions_cache()
+    tids = inter.get(pid, [])[:n]
+    if not tids or _tracks is None:
+        return {"tracks": []}
+    rows = _tracks.set_index("track_id").reindex(tids).reset_index()
+    art = _batch_art(tids)
+    out = []
+    for _, r in rows.iterrows():
+        tid = r["track_id"]
+        out.append({
+            "track_id": tid,
+            "artist_name": r.get("artist_name"),
+            "track_name": r.get("track_name"),
+            "art_url": art.get(tid),
+        })
+    return {"tracks": out}
+
+
+@app.get("/tracks/{tid}/art")
+def track_art(tid: str):
+    art = _batch_art([tid])
+    return {"track_id": tid, "art_url": art.get(tid)}
+
+
+@app.post("/tracks/art")
+def tracks_art(body: ArtBatchIn):
+    return {"art": _batch_art(body.track_ids)}
+
+
+@app.get("/metrics")
+def metrics_all():
+    out = {}
+    for name in ("classical", "neural", "hybrid", "comparison", "match_rate"):
+        p = RESULTS_M / f"{name}.json"
+        if p.exists():
+            out[name] = json.loads(p.read_text())
+    return out
+
+
+# ----- internal helpers -----
+
+_inter_cache: dict[str, list[str]] | None = None
+
+
+def _interactions_cache() -> dict[str, list[str]]:
+    global _inter_cache
+    if _inter_cache is None:
+        path = DATA_PROC / "interactions.parquet"
+        if not path.exists():
+            _inter_cache = {}
+            return _inter_cache
+        df = pd.read_parquet(path)
+        _inter_cache = df.sort_values(["playlist_id", "pos"]).groupby("playlist_id")["track_id"].apply(list).to_dict()
+    return _inter_cache
+
+
+def _batch_art(track_ids: list[str]) -> dict[str, str | None]:
+    """fetch album art URLs for a batch.
+
+    spotify locked /tracks for new dev-mode apps so we use /search by name+artist
+    instead. parallelized with a small thread pool. cached on disk so each track
+    is only looked up once ever.
+    """
+    out: dict[str, str | None] = {}
+    missing: list[str] = []
+    for tid in track_ids:
+        if tid in _art_cache:
+            out[tid] = _art_cache[tid]
+        else:
+            missing.append(tid)
+
+    if not missing or _spotify is None or _tracks is None:
+        for tid in missing:
+            out[tid] = None
+        return out
+
+    meta = _tracks.set_index("track_id").reindex(missing).reset_index()
+    queries = []
+    for _, row in meta.iterrows():
+        tid = row["track_id"]
+        artist = (row.get("artist_name") or "").strip()
+        title = (row.get("track_name") or "").strip()
+        if not artist or not title:
+            _art_cache[tid] = None
+            out[tid] = None
+            continue
+        queries.append((tid, artist, title))
+
+    if queries:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            results = list(pool.map(_lookup_art_one, queries))
+        for (tid, _, _), url in zip(queries, results, strict=True):
+            _art_cache[tid] = url
+            out[tid] = url
+        _flush_art_cache()
+    return out
+
+
+def _lookup_art_one(qtup: tuple[str, str, str]) -> str | None:
+    _tid, artist, title = qtup
+    # quote-style query lets spotify match the exact title even when it contains
+    # parentheses or special chars; fall back to bare query if the precise one misses
+    for q in (f'track:"{title}" artist:"{artist}"', f"{title} {artist}"):
+        try:
+            resp = _spotify.search(q, type="track", limit=1)
+        except Exception:
+            return None
+        items = (resp.get("tracks") or {}).get("items") or []
+        if items:
+            images = (items[0].get("album") or {}).get("images") or []
+            if images:
+                return images[min(1, len(images) - 1)].get("url")
+    return None
+
+
+def _flush_art_cache():
+    ARTIFACTS.mkdir(parents=True, exist_ok=True)
+    try:
+        ART_CACHE.write_text(json.dumps(_art_cache))
+    except OSError as e:
+        print(f"[art] could not write cache: {e}")

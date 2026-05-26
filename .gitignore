@@ -57,3 +57,5 @@ desktop.ini
 .aws/
 *.pem
 .cache/
+frontend/node_modules/
+frontend/.next/

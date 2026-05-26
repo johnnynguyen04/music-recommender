@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+/* Spotify-inspired dark palette. one accent color, slightly desaturated. */
+@theme {
+  --color-bg: #0a0a0a;
+  --color-surface: #121212;
+  --color-surface-2: #181818;
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-strong: rgba(255, 255, 255, 0.12);
+
+  --color-fg: #ffffff;
+  --color-fg-muted: #a3a3a3;
+  --color-fg-dim: #6b7280;
+
+  --color-accent: #1ed760;
+  --color-accent-hover: #1fdf64;
+  --color-accent-dim: #0e7c37;
+
+  --color-warn: #f59e0b;
+  --color-danger: #ef4444;
+
+  --font-sans: var(--font-manrope), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), monospace;
+
+  --radius-card: 1.25rem;
+  --radius-pill: 9999px;
+}
+
+html, body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* faint off-center green glow in the bg, static, doesn't fight content */
+.bg-aurora {
+  background:
+    radial-gradient(80vw 60vh at 75% 10%, rgba(30, 215, 96, 0.10), transparent 60%),
+    radial-gradient(60vw 40vh at 10% 95%, rgba(30, 215, 96, 0.05), transparent 70%),
+    var(--color-bg);
+}
+
+/* hardware-accelerated card hover */
+.card-hover {
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 180ms ease,
+              box-shadow 180ms ease;
+  will-change: transform;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-border-strong);
+  box-shadow: 0 12px 32px -16px rgba(30, 215, 96, 0.18);
+}
+
+/* numbers in mono */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* scrollbar (subtle, dark) */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.06); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.12); }
