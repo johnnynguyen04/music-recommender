@@ -1,0 +1,58 @@
+# python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.Python
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# uv / venv
+.venv/
+venv/
+env/
+
+# env files
+.env
+.env.local
+.env.*.local
+
+# data (large; not for git)
+data/raw/
+data/processed/
+data/audio_features/
+data/*.zip
+data/*.json
+data/*.csv
+data/*.parquet
+
+# trained artifacts (live in s3, not git)
+*.pt
+*.pkl
+*.bin
+checkpoints/
+artifacts/
+
+# results: figures + metrics ARE committed so the README renders without
+# re-running the pipeline.
+# (no exclusion here on purpose.)
+
+# editor / OS / claude
+.vscode/
+.idea/
+.claude/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# notebook output bloat (optional; remove if you want outputs)
+# *.ipynb
+
+# aws / secrets
+.aws/
+*.pem
