@@ -76,16 +76,8 @@ export default function CompareModels() {
                     <th
                       key={c.key}
                       className="px-4 py-4 text-right font-semibold align-bottom"
-                      title={c.help}
                     >
-                      <div className="flex flex-col items-end gap-0.5">
-                        <span>{c.label}</span>
-                        <span
-                          className="cursor-help text-[0.6rem] font-normal normal-case tracking-normal text-(color:--color-fg-dim)"
-                        >
-                          hover for definition
-                        </span>
-                      </div>
+                      <ColumnLabel label={c.label} help={c.help} />
                     </th>
                   ))}
                 </tr>
@@ -145,4 +137,19 @@ function fmt(v: number | undefined, pct?: boolean) {
   if (v === undefined || v === null || Number.isNaN(v)) return "-";
   if (pct) return `${(v * 100).toFixed(1)}%`;
   return v.toFixed(4);
+}
+
+function ColumnLabel({ label, help }: { label: string; help: string }) {
+  return (
+    <span className="group relative inline-flex cursor-help items-center gap-1">
+      {label}
+      <span className="text-(color:--color-fg-dim)" aria-hidden="true">i</span>
+      <span
+        role="tooltip"
+        className="invisible pointer-events-none absolute right-0 top-full z-10 mt-2 w-64 rounded-xl border border-white/[0.08] bg-black/90 px-3 py-2 text-left text-[0.7rem] font-normal normal-case leading-relaxed tracking-normal text-(color:--color-fg-muted) opacity-0 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.6)] backdrop-blur-md transition-opacity duration-150 group-hover:visible group-hover:opacity-100"
+      >
+        {help}
+      </span>
+    </span>
+  );
 }
