@@ -7,6 +7,8 @@ import GithubMark from "@/components/icons/GithubMark";
 import AuroraBackground from "@/components/AuroraBackground";
 import NowPlayingBar from "@/components/NowPlayingBar";
 import TabNav, { type TabKey } from "@/components/TabNav";
+import { useAudio } from "@/lib/audioPlayer";
+import { cn } from "@/lib/utils";
 import TryIt from "@/components/tabs/TryIt";
 import HowItPicks from "@/components/tabs/HowItPicks";
 import CompareModels from "@/components/tabs/CompareModels";
@@ -26,6 +28,7 @@ const fadeUp = {
 
 export default function Home() {
   const [tab, setTab] = useState<TabKey>("try");
+  const { current } = useAudio();
 
   return (
     <>
@@ -40,7 +43,13 @@ export default function Home() {
           <Header tab={tab} onChange={setTab} />
         </motion.div>
 
-        <main className="mx-auto w-full max-w-[1200px] flex-1 px-5 py-10 md:px-8 md:py-16">
+        <main
+          className={cn(
+            "mx-auto w-full max-w-[1200px] flex-1 px-5 py-10 md:px-8 md:py-16",
+            // leave space for the now-playing bar so it doesn't cover content
+            current && "pb-28 md:pb-24",
+          )}
+        >
           <motion.div
             variants={fadeUp}
             initial="initial"

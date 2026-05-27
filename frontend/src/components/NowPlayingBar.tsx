@@ -73,7 +73,7 @@ export default function NowPlayingBar() {
               <button
                 onClick={stop}
                 aria-label="Close player"
-                className="rounded-full p-1.5 text-(color:--color-fg-dim) transition-colors hover:bg-white/[0.06] hover:text-(color:--color-fg)"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-(color:--color-fg-dim) transition-colors hover:bg-white/[0.06] hover:text-(color:--color-fg)"
               >
                 <X size={14} />
               </button>

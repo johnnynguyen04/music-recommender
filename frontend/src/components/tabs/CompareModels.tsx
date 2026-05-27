@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { Info } from "lucide-react";
 import GlassCard from "@/components/GlassCard";
 import { api, type MetricsBlob } from "@/lib/api";
 import { list, item } from "@/lib/motion";
@@ -141,9 +142,9 @@ function fmt(v: number | undefined, pct?: boolean) {
 
 function ColumnLabel({ label, help }: { label: string; help: string }) {
   return (
-    <span className="group relative inline-flex cursor-help items-center gap-1">
+    <span className="group relative inline-flex cursor-help items-center gap-1.5">
       {label}
-      <span className="text-(color:--color-fg-dim)" aria-hidden="true">i</span>
+      <Info size={11} className="text-(color:--color-fg-dim) opacity-70" aria-hidden="true" />
       <span
         role="tooltip"
         className="invisible pointer-events-none absolute right-0 top-full z-10 mt-2 w-64 rounded-xl border border-white/[0.08] bg-black/90 px-3 py-2 text-left text-[0.7rem] font-normal normal-case leading-relaxed tracking-normal text-(color:--color-fg-muted) opacity-0 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.6)] backdrop-blur-md transition-opacity duration-150 group-hover:visible group-hover:opacity-100"

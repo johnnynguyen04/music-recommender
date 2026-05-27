@@ -262,7 +262,8 @@ function SearchPanel({ onAdd }: { onAdd: (t: TrackHit) => void }) {
                 </div>
                 <button
                   onClick={() => { onAdd(h); }}
-                  className="rounded-full bg-white/[0.06] px-3 py-1 text-xs font-medium text-(color:--color-fg-muted) opacity-0 transition-all hover:bg-(color:--color-accent) hover:text-black group-hover:opacity-100"
+                  // visible by default on touch; fade in on hover for mouse devices only
+                  className="rounded-full bg-white/[0.06] px-3 py-1 text-xs font-medium text-(color:--color-fg-muted) opacity-100 transition-all hover:bg-(color:--color-accent) hover:text-black [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
                 >
                   Add
                 </button>
@@ -346,7 +347,7 @@ function SeedList({ seeds, onRemove, onClear }: {
                 <div className="truncate text-sm font-medium">{s.track_name}</div>
                 <div className="truncate text-xs text-(color:--color-fg-muted)">{s.artist_name}</div>
               </div>
-              <button onClick={() => onRemove(s.track_id)} className="rounded-full p-1 text-(color:--color-fg-dim) hover:bg-white/[0.06] hover:text-(color:--color-fg)" aria-label="Remove">
+              <button onClick={() => onRemove(s.track_id)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-(color:--color-fg-dim) hover:bg-white/[0.06] hover:text-(color:--color-fg)" aria-label="Remove">
                 <X size={14} />
               </button>
             </motion.li>

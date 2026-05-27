@@ -72,13 +72,18 @@ export default function ArtWithPlay({
           />
         </div>
       )}
+      {/* mouse devices: full-overlay play button on hover (or when active) */}
       <div
         className={cn(
-          "absolute inset-0 flex items-center justify-center bg-black/55 transition-opacity duration-150",
+          "absolute inset-0 hidden items-center justify-center bg-black/55 transition-opacity duration-150 [@media(hover:hover)]:flex",
           active ? "opacity-100" : "opacity-0 group-hover/art:opacity-100",
         )}
       >
         <PlayButton track={track} size={buttonSize} />
+      </div>
+      {/* touch devices: small play badge in bottom-right, always visible */}
+      <div className="absolute bottom-1 right-1 [@media(hover:hover)]:hidden">
+        <PlayButton track={track} size={Math.max(24, Math.round(size * 0.42))} />
       </div>
     </div>
   );
