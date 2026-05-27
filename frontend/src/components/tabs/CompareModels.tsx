@@ -13,7 +13,13 @@ const MODELS = [
   { key: "hybrid", label: "Music-aware", note: "Neural + music theory re-rank" },
 ] as const;
 
-const COLS = [
+interface ColSpec {
+  key: string;
+  label: string;
+  help: string;
+  pct?: boolean;
+}
+const COLS: ColSpec[] = [
   {
     key: "ndcg@10",
     label: "Ranking quality",
@@ -41,7 +47,7 @@ const COLS = [
     label: "Coverage in top 50",
     help: "Of all the correct songs we hid, what fraction the top 50 actually found (Recall@50).",
   },
-] as const;
+];
 
 export default function CompareModels() {
   const [m, setM] = useState<MetricsBlob | null>(null);
@@ -85,7 +91,7 @@ export default function CompareModels() {
               </thead>
               <motion.tbody variants={list} initial="initial" animate="animate">
                 {MODELS.map((mod) => {
-                  const row = (comp as Record<string, Record<string, number>>)[mod.key];
+                  const row = comp[mod.key] as Record<string, number>;
                   const isHybrid = mod.key === "hybrid";
                   return (
                     <motion.tr

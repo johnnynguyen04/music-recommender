@@ -23,9 +23,11 @@ WORKDIR /app
 RUN chown -R app:app /app
 USER app
 
-# dependency layer (cached unless pyproject.toml / uv.lock change)
+# dependency layer (cached unless pyproject.toml / uv.lock change).
+# --no-install-project skips building the local "music-recommender" package
+# itself; we just want its dependencies. src/ is imported directly at runtime.
 COPY --chown=app:app pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --extra serve
+RUN uv sync --frozen --no-dev --no-install-project --extra serve
 
 # code + artifacts + data
 COPY --chown=app:app src/ ./src/
