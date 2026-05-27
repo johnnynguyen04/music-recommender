@@ -2,8 +2,6 @@
 
 Built three ways to recommend the next song for a playlist, scored them on the same data, and shipped the comparison.
 
-**Live demo:** TBA (Vercel + Hugging Face Spaces. Runbook in `deploy/`)
-
 ## Results
 
 Same 2,000 held-out playlists, same five metrics.
