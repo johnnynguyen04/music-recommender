@@ -14,33 +14,6 @@ Same 2,000 held-out playlists, same five metrics.
 
 Classical wins. Known result in this space: matrix factorization with implicit confidence is a strong baseline, and beating it usually takes more training than I ran here. I shipped the table anyway because reporting the honest number is more useful than tuning until the favored model looks better. The fix (harder negatives, more epochs) is documented further down.
 
-## The music-theory angle
-
-Per-track features I derived from Spotify's `key` and `mode`:
-
-- **Camelot wheel position** (the harmonic-mixing system DJs use, e.g. C major = 8B)
-- **Harmonic distance** between any two tracks (0 = same key, 1 = adjacent on the wheel, larger = clash)
-- **Tempo compatibility** with a soft window around ±10 BPM
-- **Energy continuity** between consecutive tracks
-
-These get combined into a per-pair coherence score in [src/theory.py](src/theory.py), then averaged over the last few tracks of an input playlist to produce a "does this fit" number for every candidate. The hybrid model uses it to re-rank the top 200 candidates from the neural CF model.
-
-Worked example (from notebook 06):
-
-```
-C major     -> 8B
-A minor     -> 8A    (relative minor of C, shares all 7 notes)
-F# major    -> 2B    (opposite face of the wheel)
-
-harmonic distance C maj -> A min  : 1.0    (relative major/minor swap)
-harmonic distance C maj -> G maj  : 1.0    (one step around the wheel)
-harmonic distance C maj -> F# maj : 6.0    (opposite face, jarring)
-```
-
-On the validation set the best blend was α = 0.9: 90% listening pattern, 10% music fit. The theory layer helps, but only a little. Reason: **only 2.0% of MPD tracks have audio features** (Spotify deprecated the public `/audio-features` endpoint for new developer apps in late 2024). For the other 98% the coherence score falls back to neutral, so the re-rank has signal on a tiny slice of the candidate pool. With fuller coverage (paid Spotify enrichment, or a different open dataset) the hybrid would have a real shot at the baseline.
-
-![Alpha sweep](results/figures/alpha_sweep.png)
-
 ## Stack
 
 - **Models:** PyTorch (two-tower, BPR pairwise loss), `implicit` (ALS), scikit-learn TruncatedSVD as a fallback if `implicit` won't install
