@@ -1,8 +1,7 @@
 # Music Recommender
 
-Built three ways to recommend the next song for a playlist, scored them on the same data, and shipped the comparison. Done as a portfolio project for ML/DS internships.
+Built three ways to recommend the next song for a playlist, scored them on the same data, and shipped the comparison.
 
-**Repo:** [github.com/johnnynguyen04/music-recommender](https://github.com/johnnynguyen04/music-recommender)
 **Live demo:** TBA (Vercel + Hugging Face Spaces. Runbook in `deploy/`)
 
 ## Results
@@ -18,8 +17,6 @@ Same 2,000 held-out playlists, same five metrics.
 Classical wins. Known result in this space: matrix factorization with implicit confidence is a strong baseline, and beating it usually takes more training than I ran here. I shipped the table anyway because reporting the honest number is more useful than tuning until the favored model looks better. The fix (harder negatives, more epochs) is documented further down.
 
 ## The music-theory angle
-
-I came into data science from a music background. Music theory, ear training, music technology, and French horn coursework all stayed on the UCF transcript when I switched. Most undergrad recommendation projects stop at collaborative filtering on tags or genres. This one adds a layer that asks: *do these songs actually sound right next to each other?*
 
 Per-track features I derived from Spotify's `key` and `mode`:
 
@@ -102,8 +99,6 @@ cd frontend && npm install && npm run dev
 ```
 
 ## Limitations
-
-Written here so the resume claim and the actual artifact line up.
 
 - **Hybrid is bound by audio-feature coverage.** 2% of MPD track IDs matched the Kaggle features table. Paid Spotify enrichment or a different open dataset would unblock it.
 - **Neural model trails ALS.** 4 epochs of BPR with random negatives is undertrained for this benchmark. Harder negative sampling (mined from popularity or from CF candidates) plus more epochs would close most of the gap.
