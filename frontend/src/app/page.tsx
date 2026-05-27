@@ -110,8 +110,14 @@ function Header({ tab, onChange }: { tab: TabKey; onChange: (t: TabKey) => void 
 function Footer() {
   return (
     <footer className="mx-auto w-full max-w-[1200px] px-5 pb-10 pt-6 text-xs text-(color:--color-fg-dim) md:px-8">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.04] pt-5">
-        <div>Built by Johnny Nguyen</div>
+      <div className="flex flex-col gap-2 border-t border-white/[0.04] pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span>Built by Johnny Nguyen</span>
+          <span className="text-(color:--color-border-strong)">·</span>
+          <span>Spotify Million Playlist Dataset</span>
+          <span className="text-(color:--color-border-strong)">·</span>
+          <span>iTunes Preview API</span>
+        </div>
         <div className="flex gap-4">
           <a className="hover:text-(color:--color-fg)" href="https://github.com/johnnynguyen04/music-recommender" target="_blank" rel="noopener noreferrer">Source</a>
           <a className="hover:text-(color:--color-fg)" href={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/docs"} target="_blank" rel="noopener noreferrer">API</a>

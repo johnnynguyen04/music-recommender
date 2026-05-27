@@ -1,9 +1,7 @@
 "use client";
 
-// Single global <audio> element + context so only one preview plays at a
-// time, regardless of which card the user clicks. Stores enough track
-// metadata that a persistent bottom NowPlayingBar can render from context
-// without re-querying the API.
+// Single global <audio> element + context. One preview plays at a time.
+// Also supports a small queue (Play All on the recommendations).
 
 import {
   createContext,
@@ -28,25 +26,51 @@ interface AudioState {
   current: TrackInfo | null;
   isPlaying: boolean;
   isLoading: boolean;
-  progress: number; // 0..1
+  progress: number;
+  queueLength: number;
 }
 
 interface AudioCtx extends AudioState {
   toggle: (track: TrackInfo) => void;
   stop: () => void;
   seek: (progress: number) => void;
+  playQueue: (tracks: TrackInfo[]) => void;
 }
 
 const Ctx = createContext<AudioCtx | null>(null);
 
 export function AudioProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const queueRef = useRef<TrackInfo[]>([]);
   const [state, setState] = useState<AudioState>({
     current: null,
     isPlaying: false,
     isLoading: false,
     progress: 0,
+    queueLength: 0,
   });
+
+  // play a track directly, bypassing queue-clearing logic
+  const startTrack = useCallback((track: TrackInfo) => {
+    const el = audioRef.current;
+    if (!el || !track.preview_url) return;
+    el.pause();
+    setState((s) => ({
+      ...s, current: track, isPlaying: false, isLoading: true, progress: 0,
+    }));
+    el.src = track.preview_url;
+    el.currentTime = 0;
+    el.play()
+      .then(() =>
+        setState((s) => ({ ...s, current: track, isPlaying: true, isLoading: false })),
+      )
+      .catch(() => {
+        queueRef.current = [];
+        setState((s) => ({
+          ...s, current: null, isPlaying: false, isLoading: false, queueLength: 0,
+        }));
+      });
+  }, []);
 
   const toggle = useCallback(
     (track: TrackInfo) => {
@@ -63,24 +87,20 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      el.pause();
-      setState({ current: track, isPlaying: false, isLoading: true, progress: 0 });
-      el.src = track.preview_url;
-      el.currentTime = 0;
-      el.play()
-        .then(() =>
-          setState({ current: track, isPlaying: true, isLoading: false, progress: 0 }),
-        )
-        .catch(() =>
-          setState({ current: null, isPlaying: false, isLoading: false, progress: 0 }),
-        );
+      // user clicked a different track manually — clear any active queue
+      queueRef.current = [];
+      setState((s) => ({ ...s, queueLength: 0 }));
+      startTrack(track);
     },
-    [state.current, state.isPlaying],
+    [state.current, state.isPlaying, startTrack],
   );
 
   const stop = useCallback(() => {
+    queueRef.current = [];
     audioRef.current?.pause();
-    setState({ current: null, isPlaying: false, isLoading: false, progress: 0 });
+    setState({
+      current: null, isPlaying: false, isLoading: false, progress: 0, queueLength: 0,
+    });
   }, []);
 
   const seek = useCallback((progress: number) => {
@@ -88,6 +108,17 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     if (!el || !Number.isFinite(el.duration)) return;
     el.currentTime = Math.max(0, Math.min(1, progress)) * el.duration;
   }, []);
+
+  const playQueue = useCallback(
+    (tracks: TrackInfo[]) => {
+      const playable = tracks.filter((t) => t.preview_url);
+      if (playable.length === 0) return;
+      queueRef.current = playable.slice(1);
+      setState((s) => ({ ...s, queueLength: queueRef.current.length }));
+      startTrack(playable[0]);
+    },
+    [startTrack],
+  );
 
   // reset aurora to spotify-green whenever the active track clears
   const prevId = useRef<string | null>(null);
@@ -99,17 +130,26 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     prevId.current = id;
   }, [state.current]);
 
+  // when the current preview ends, advance to next in queue (if any)
   useEffect(() => {
     const el = audioRef.current;
     if (!el) return;
-    const onEnded = () =>
-      setState({ current: null, isPlaying: false, isLoading: false, progress: 0 });
+    const onEnded = () => {
+      const next = queueRef.current.shift();
+      if (next) {
+        setState((s) => ({ ...s, queueLength: queueRef.current.length }));
+        startTrack(next);
+      } else {
+        setState({
+          current: null, isPlaying: false, isLoading: false, progress: 0, queueLength: 0,
+        });
+      }
+    };
     el.addEventListener("ended", onEnded);
     return () => el.removeEventListener("ended", onEnded);
-  }, []);
+  }, [startTrack]);
 
-  // 60fps progress via RAF so the scrub bar moves smoothly. Only runs while
-  // audio is actually playing, so it's free when idle.
+  // 60fps progress via RAF for smooth scrub bar movement
   useEffect(() => {
     if (!state.isPlaying) return;
     let raf = 0;
@@ -125,7 +165,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   }, [state.isPlaying]);
 
   return (
-    <Ctx.Provider value={{ ...state, toggle, stop, seek }}>
+    <Ctx.Provider value={{ ...state, toggle, stop, seek, playQueue }}>
       {children}
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio ref={audioRef} preload="none" />

@@ -4,7 +4,9 @@ import { motion } from "framer-motion";
 import GlassCard from "@/components/GlassCard";
 
 // Camelot wheel: 12 positions, two rings. B (outer) = major, A (inner) = minor.
-const POSITIONS = Array.from({ length: 12 }, (_, i) => i + 1);
+// Convention: 12 sits at 12 o'clock and numbers go clockwise. Putting 1 at
+// the top reads as "rotated 30° off" to anyone who's used the wheel before.
+const POSITIONS = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 const EXAMPLE_SEED = "8B";
 const EXAMPLE_CANDIDATES = ["8B", "9B", "10B", "5A", "12A"];
 
@@ -79,7 +81,7 @@ function CamelotSVG({ seed, candidates }: { seed: string; candidates: string[] }
   const segAngle = (2 * Math.PI) / 12;
 
   return (
-    <svg viewBox={`0 0 ${size} ${size}`} width="100%" className="max-w-[380px]">
+    <svg viewBox={`0 0 ${size} ${size}`} width="100%" className="mx-auto block max-w-[380px]">
       {POSITIONS.map((n, i) => {
         const ang = i * segAngle - Math.PI / 2;
         const a = ang - segAngle / 2;

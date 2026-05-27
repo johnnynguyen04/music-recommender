@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Search, X, Sparkles, AlertCircle } from "lucide-react";
+import { Search, X, Sparkles, AlertCircle, Play } from "lucide-react";
 import GlassCard from "@/components/GlassCard";
 import ArtWithPlay from "@/components/ArtWithPlay";
 import { api, type ModelName, type Recommendation, type TrackHit, type PlaylistPreview } from "@/lib/api";
+import { useAudio } from "@/lib/audioPlayer";
 import { cn } from "@/lib/utils";
 import { item, list } from "@/lib/motion";
 
@@ -225,7 +226,7 @@ function SearchPanel({ onAdd }: { onAdd: (t: TrackHit) => void }) {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Drake, Adele, Bruno Mars, Taylor Swift..."
+          placeholder="Search"
           className="w-full rounded-full border border-white/[0.08] bg-black/40 py-2.5 pl-10 pr-3 text-sm text-(color:--color-fg) placeholder:text-(color:--color-fg-dim) outline-none focus:border-(color:--color-accent)/40"
         />
       </div>
@@ -377,9 +378,39 @@ function Results({ recs, loading }: { recs: Recommendation[] | null; loading: bo
       </p>
     );
   }
+  return <RecsList recs={recs} />;
+}
+
+function RecsList({ recs }: { recs: Recommendation[] }) {
+  const audio = useAudio();
+  const playableCount = recs.filter((r) => r.preview_url).length;
+
+  const playAll = () => {
+    audio.playQueue(
+      recs.map((r) => ({
+        id: r.track_id,
+        title: r.track_name,
+        artist: r.artist_name,
+        art_url: r.art_url,
+        preview_url: r.preview_url,
+      })),
+    );
+  };
+
   return (
     <section className="flex flex-col gap-4">
-      <SectionLabel>Suggestions</SectionLabel>
+      <div className="flex items-end justify-between">
+        <SectionLabel>Suggestions</SectionLabel>
+        {playableCount > 1 && (
+          <button
+            onClick={playAll}
+            className="group flex items-center gap-1.5 rounded-full bg-white/[0.06] px-3.5 py-1.5 text-xs font-medium text-(color:--color-fg-muted) transition-all hover:bg-(color:--color-accent) hover:text-black active:scale-95"
+          >
+            <Play size={11} fill="currentColor" className="ml-px" />
+            Play all
+          </button>
+        )}
+      </div>
       <motion.ul
         variants={list}
         initial="initial"
