@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope, JetBrains_Mono } from "next/font/google";
+import LiquidGlassFilter from "@/components/LiquidGlassFilter";
+import { AudioProvider } from "@/lib/audioPlayer";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -15,8 +17,23 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://music-recommender.vercel.app"),
   title: "Music Recommender",
-  description: "Compare three ways to recommend the next song for a playlist.",
+  description:
+    "Three models compared on the same Spotify playlists: classical matrix math, a neural two-tower, and a music-theory-aware hybrid. Hear 30-second previews of every recommendation.",
+  openGraph: {
+    title: "Music Recommender",
+    description:
+      "Three models compared on the same Spotify playlists, with album-art-reactive aurora and 30-second previews.",
+    type: "website",
+    siteName: "Music Recommender",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Music Recommender",
+    description:
+      "Three models compared on the same Spotify playlists. Hear every recommendation.",
+  },
 };
 
 export default function RootLayout({
@@ -24,7 +41,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${manrope.variable} ${jetbrainsMono.variable}`}>
-      <body className="min-h-[100dvh] bg-aurora">{children}</body>
+      <body className="min-h-[100dvh]">
+        <LiquidGlassFilter />
+        <AudioProvider>{children}</AudioProvider>
+      </body>
     </html>
   );
 }

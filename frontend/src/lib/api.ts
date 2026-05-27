@@ -11,6 +11,7 @@ export interface TrackHit {
   track_name: string;
   album_name?: string;
   art_url: string | null;
+  preview_url?: string | null;
 }
 
 export interface Recommendation {
@@ -23,6 +24,7 @@ export interface Recommendation {
   energy?: number | null;
   coherence?: number | null;
   art_url?: string | null;
+  preview_url?: string | null;
 }
 
 export interface PlaylistPreview {

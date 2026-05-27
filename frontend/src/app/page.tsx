@@ -1,74 +1,122 @@
-// placeholder home. real layout lands once stitch mocks are in.
-import Link from "next/link";
-import { api } from "@/lib/api";
+"use client";
 
-export default async function Home() {
-  let healthOk = false;
-  let loaded = false;
-  let metricsAvailable = false;
+import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import Brand from "@/components/Brand";
+import GithubMark from "@/components/icons/GithubMark";
+import AuroraBackground from "@/components/AuroraBackground";
+import NowPlayingBar from "@/components/NowPlayingBar";
+import TabNav, { type TabKey } from "@/components/TabNav";
+import TryIt from "@/components/tabs/TryIt";
+import HowItPicks from "@/components/tabs/HowItPicks";
+import CompareModels from "@/components/tabs/CompareModels";
+import MusicTheory from "@/components/tabs/MusicTheory";
+import HowItWasBuilt from "@/components/tabs/HowItWasBuilt";
+import About from "@/components/tabs/About";
+import { tabPage } from "@/lib/motion";
 
-  try {
-    const h = await api.health();
-    healthOk = h.status === "ok";
-    loaded = h.loaded;
-    const m = await api.metrics();
-    metricsAvailable = !!m.comparison;
-  } catch {
-    // server not up; render the diagnostic block
-  }
+// first-load entrance: aurora fades in via CSS, header slides up after,
+// main content lands last. Total choreography ~1s. Subsequent tab
+// switches use only the inner tabPage variant, so the header doesn't
+// re-animate every time.
+const fadeUp = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0 },
+};
+
+export default function Home() {
+  const [tab, setTab] = useState<TabKey>("try");
 
   return (
-    <main className="mx-auto flex w-full max-w-[1100px] flex-col gap-12 px-6 py-20">
-      <header className="flex flex-col gap-3">
-        <span className="num text-xs uppercase tracking-[0.18em] text-(color:--color-fg-dim)">
-          v0.1 · placeholder
-        </span>
-        <h1 className="text-5xl font-bold leading-none tracking-tighter md:text-6xl">
-          Music Recommender
-        </h1>
-        <p className="max-w-[60ch] text-(color:--color-fg-muted) leading-relaxed">
-          The real layout is coming. This page only exists to prove the Next.js app
-          is wired up to the FastAPI server. Once the design mocks land, the six
-          tabs will live here.
-        </p>
-      </header>
+    <>
+      <AuroraBackground />
+      <div className="relative z-10 flex min-h-[100dvh] flex-col">
+        <motion.div
+          variants={fadeUp}
+          initial="initial"
+          animate="animate"
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.25 }}
+        >
+          <Header tab={tab} onChange={setTab} />
+        </motion.div>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Diag label="FastAPI reachable" ok={healthOk} />
-        <Diag label="Model loaded" ok={loaded} />
-        <Diag label="Metrics available" ok={metricsAvailable} />
-      </section>
+        <main className="mx-auto w-full max-w-[1200px] flex-1 px-5 py-10 md:px-8 md:py-16">
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.45 }}
+          >
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={tab}
+                variants={tabPage}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+              >
+                {tab === "try" && <TryIt />}
+                {tab === "how-it-picks" && <HowItPicks />}
+                {tab === "compare" && <CompareModels />}
+                {tab === "theory" && <MusicTheory />}
+                {tab === "build" && <HowItWasBuilt />}
+                {tab === "about" && <About />}
+              </motion.div>
+            </AnimatePresence>
+          </motion.div>
+        </main>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">Quick check</h2>
-        <p className="text-(color:--color-fg-muted) text-sm leading-relaxed">
-          The API server runs at{" "}
-          <code className="num text-(color:--color-accent)">http://localhost:8000</code>.
-          Open <Link href="http://localhost:8000/docs" className="text-(color:--color-accent) underline">
-            the OpenAPI docs
-          </Link>{" "}
-          to poke at endpoints directly.
-        </p>
-      </section>
-    </main>
+        <motion.div
+          variants={fadeUp}
+          initial="initial"
+          animate="animate"
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.65 }}
+        >
+          <Footer />
+        </motion.div>
+      </div>
+      <NowPlayingBar />
+    </>
   );
 }
 
-function Diag({ label, ok }: { label: string; ok: boolean }) {
+function Header({ tab, onChange }: { tab: TabKey; onChange: (t: TabKey) => void }) {
   return (
-    <div className="rounded-(--radius-card) border border-(color:--color-border) bg-(color:--color-surface) p-5 card-hover">
-      <div className="flex items-center gap-3">
-        <span
-          className={
-            "h-2.5 w-2.5 rounded-full " +
-            (ok ? "bg-(color:--color-accent)" : "bg-(color:--color-danger)")
-          }
-        />
-        <span className="text-sm font-medium">{label}</span>
+    <header className="sticky top-0 z-20 border-b border-white/[0.06] bg-black/60 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center gap-6 px-5 md:px-8">
+        <Brand />
+        <div className="hidden flex-1 md:block">
+          <TabNav active={tab} onChange={onChange} />
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <a
+            href="https://github.com/johnnynguyen04/music-recommender"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="GitHub"
+            className="rounded-full p-2 text-(color:--color-fg-muted) transition-colors hover:bg-white/[0.05] hover:text-(color:--color-fg)"
+          >
+            <GithubMark size={18} />
+          </a>
+        </div>
       </div>
-      <div className="num mt-2 text-xs text-(color:--color-fg-dim)">
-        {ok ? "ok" : "not reachable"}
+      <div className="border-t border-white/[0.04] px-3 py-2 md:hidden">
+        <TabNav active={tab} onChange={onChange} />
       </div>
-    </div>
+    </header>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="mx-auto w-full max-w-[1200px] px-5 pb-10 pt-6 text-xs text-(color:--color-fg-dim) md:px-8">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.04] pt-5">
+        <div>Built by Johnny Nguyen</div>
+        <div className="flex gap-4">
+          <a className="hover:text-(color:--color-fg)" href="https://github.com/johnnynguyen04/music-recommender" target="_blank" rel="noopener noreferrer">Source</a>
+          <a className="hover:text-(color:--color-fg)" href={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/docs"} target="_blank" rel="noopener noreferrer">API</a>
+        </div>
+      </div>
+    </footer>
   );
 }

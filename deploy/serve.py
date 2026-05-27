@@ -96,9 +96,16 @@ def _load():
     )
     if ART_CACHE.exists():
         try:
-            _art_cache = json.loads(ART_CACHE.read_text())
+            raw = json.loads(ART_CACHE.read_text())
         except json.JSONDecodeError:
-            _art_cache = {}
+            raw = {}
+        # migrate old cache (str values were just art URLs, no preview)
+        _art_cache = {}
+        for tid, v in raw.items():
+            if isinstance(v, dict):
+                _art_cache[tid] = v
+            elif isinstance(v, str) or v is None:
+                _art_cache[tid] = {"art_url": v, "preview_url": None}
     _spotify = audio.get_client()
     print(f"[startup] loaded. {len(_tracks):,} tracks, alpha={alpha}, "
           f"art_cache={len(_art_cache):,}, spotify={'on' if _spotify else 'off'}")
@@ -144,10 +151,12 @@ def recommend(body: RecommendIn):
         model=body.model,
         k=body.k,
     )
-    # attach album art URLs (best-effort)
-    art = _batch_art([r["track_id"] for r in recs])
+    # attach album art + 30s preview URL (best-effort, both can be null)
+    meta = _batch_meta([r["track_id"] for r in recs])
     for r in recs:
-        r["art_url"] = art.get(r["track_id"])
+        info = meta.get(r["track_id"]) or {}
+        r["art_url"] = info.get("art_url")
+        r["preview_url"] = info.get("preview_url")
     return {"model": body.model, "playlist_id": body.playlist_id, "recommendations": recs}
 
 
@@ -162,9 +171,11 @@ def search(q: str, limit: int = 8):
                 _tracks["track_name"].fillna("").str.lower())
     hits = _tracks[haystack.str.contains(needle, regex=False, na=False)].head(limit)
     items = hits[["track_id", "artist_name", "track_name", "album_name"]].to_dict("records")
-    art = _batch_art([i["track_id"] for i in items])
+    meta = _batch_meta([i["track_id"] for i in items])
     for i in items:
-        i["art_url"] = art.get(i["track_id"])
+        info = meta.get(i["track_id"]) or {}
+        i["art_url"] = info.get("art_url")
+        i["preview_url"] = info.get("preview_url")
     return {"results": items}
 
 
@@ -196,28 +207,30 @@ def playlist_tracks(pid: str, n: int = 5):
     if not tids or _tracks is None:
         return {"tracks": []}
     rows = _tracks.set_index("track_id").reindex(tids).reset_index()
-    art = _batch_art(tids)
+    meta = _batch_meta(tids)
     out = []
     for _, r in rows.iterrows():
         tid = r["track_id"]
+        info = meta.get(tid) or {}
         out.append({
             "track_id": tid,
             "artist_name": r.get("artist_name"),
             "track_name": r.get("track_name"),
-            "art_url": art.get(tid),
+            "art_url": info.get("art_url"),
+            "preview_url": info.get("preview_url"),
         })
     return {"tracks": out}
 
 
 @app.get("/tracks/{tid}/art")
 def track_art(tid: str):
-    art = _batch_art([tid])
-    return {"track_id": tid, "art_url": art.get(tid)}
+    info = _batch_meta([tid]).get(tid) or {}
+    return {"track_id": tid, **info}
 
 
 @app.post("/tracks/art")
 def tracks_art(body: ArtBatchIn):
-    return {"art": _batch_art(body.track_ids)}
+    return {"meta": _batch_meta(body.track_ids)}
 
 
 @app.get("/metrics")
@@ -247,14 +260,14 @@ def _interactions_cache() -> dict[str, list[str]]:
     return _inter_cache
 
 
-def _batch_art(track_ids: list[str]) -> dict[str, str | None]:
-    """fetch album art URLs for a batch.
+def _batch_meta(track_ids: list[str]) -> dict[str, dict]:
+    """fetch album art URL + 30s preview URL for a batch.
 
-    spotify locked /tracks for new dev-mode apps so we use /search by name+artist
-    instead. parallelized with a small thread pool. cached on disk so each track
-    is only looked up once ever.
+    spotify locked /tracks for new dev-mode apps so we use /search by name+artist.
+    parallelized with a small thread pool; cached on disk per-track. result shape:
+      {tid: {"art_url": str|None, "preview_url": str|None}}
     """
-    out: dict[str, str | None] = {}
+    out: dict[str, dict] = {}
     missing: list[str] = []
     for tid in track_ids:
         if tid in _art_cache:
@@ -264,7 +277,7 @@ def _batch_art(track_ids: list[str]) -> dict[str, str | None]:
 
     if not missing or _spotify is None or _tracks is None:
         for tid in missing:
-            out[tid] = None
+            out[tid] = {"art_url": None, "preview_url": None}
         return out
 
     meta = _tracks.set_index("track_id").reindex(missing).reset_index()
@@ -274,37 +287,45 @@ def _batch_art(track_ids: list[str]) -> dict[str, str | None]:
         artist = (row.get("artist_name") or "").strip()
         title = (row.get("track_name") or "").strip()
         if not artist or not title:
-            _art_cache[tid] = None
-            out[tid] = None
+            _art_cache[tid] = {"art_url": None, "preview_url": None}
+            out[tid] = _art_cache[tid]
             continue
         queries.append((tid, artist, title))
 
     if queries:
         from concurrent.futures import ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=6) as pool:
-            results = list(pool.map(_lookup_art_one, queries))
-        for (tid, _, _), url in zip(queries, results, strict=True):
-            _art_cache[tid] = url
-            out[tid] = url
+            results = list(pool.map(_lookup_meta_one, queries))
+        for (tid, _, _), info in zip(queries, results, strict=True):
+            _art_cache[tid] = info
+            out[tid] = info
         _flush_art_cache()
     return out
 
 
-def _lookup_art_one(qtup: tuple[str, str, str]) -> str | None:
+def _lookup_meta_one(qtup: tuple[str, str, str]) -> dict:
     _tid, artist, title = qtup
-    # quote-style query lets spotify match the exact title even when it contains
-    # parentheses or special chars; fall back to bare query if the precise one misses
-    for q in (f'track:"{title}" artist:"{artist}"', f"{title} {artist}"):
-        try:
-            resp = _spotify.search(q, type="track", limit=1)
-        except Exception:
-            return None
-        items = (resp.get("tracks") or {}).get("items") or []
-        if items:
-            images = (items[0].get("album") or {}).get("images") or []
-            if images:
-                return images[min(1, len(images) - 1)].get("url")
-    return None
+    # iTunes Search API: free, no auth, returns 30s previewUrl and album art.
+    # spotify removed preview_url from /search for dev-mode apps in late 2024,
+    # and iTunes covers basically every commercial track in MPD anyway.
+    import urllib.parse, urllib.request
+
+    term = urllib.parse.quote_plus(f"{artist} {title}")
+    url = f"https://itunes.apple.com/search?term={term}&entity=song&limit=1"
+    try:
+        with urllib.request.urlopen(url, timeout=4) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception:
+        return {"art_url": None, "preview_url": None}
+    results = data.get("results") or []
+    if not results:
+        return {"art_url": None, "preview_url": None}
+    r = results[0]
+    # iTunes returns 100x100 art by default; bump to 300x300 by URL substitution
+    art = r.get("artworkUrl100")
+    if art:
+        art = art.replace("100x100bb", "300x300bb")
+    return {"art_url": art, "preview_url": r.get("previewUrl")}
 
 
 def _flush_art_cache():
