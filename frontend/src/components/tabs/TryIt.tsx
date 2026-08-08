@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Search, X, Sparkles, AlertCircle, Play } from "lucide-react";
+import { MagnifyingGlass, X, Waveform, WarningCircle, Play } from "@phosphor-icons/react";
 import GlassCard from "@/components/GlassCard";
 import ArtWithPlay from "@/components/ArtWithPlay";
 import { api, type ModelName, type Recommendation, type TrackHit, type PlaylistPreview } from "@/lib/api";
@@ -45,11 +45,18 @@ export default function TryIt() {
 
   return (
     <div className="flex flex-col gap-8">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-4xl font-bold leading-none tracking-tight md:text-5xl">
+      <header className="flex flex-col gap-3">
+        <span className="inline-flex w-max items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-[0.66rem] font-medium uppercase tracking-[0.2em] text-(color:--color-fg-muted)">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-(color:--color-accent) opacity-60" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-(color:--color-accent)" />
+          </span>
+          Live demo
+        </span>
+        <h1 className="text-balance text-5xl font-bold leading-[0.98] tracking-[-0.035em] md:text-6xl">
           Recommend a song.
         </h1>
-        <p className="max-w-[60ch] text-(color:--color-fg-muted) leading-relaxed">
+        <p className="max-w-[60ch] text-pretty text-(color:--color-fg-muted) leading-relaxed">
           Pick a few starting songs, choose a model, and see what fits next. The
           model only knows tracks from the Million Playlist Dataset (Spotify, 2010-2017),
           so newer songs won&apos;t show up in search.
@@ -80,6 +87,8 @@ export default function TryIt() {
               How it picks
             </span>
             <Segmented<ModelName>
+              id="model"
+              accent
               options={[
                 { value: "hybrid", label: "Music-aware" },
                 { value: "neural", label: "Pattern only" },
@@ -89,7 +98,7 @@ export default function TryIt() {
             />
             <p className="mt-2 text-sm text-(color:--color-fg-muted) leading-relaxed">
               {model === "hybrid"
-                ? "Finds songs other people group with yours, then keeps the ones that actually sound right next to your picks — same key feel, close tempo, matching energy."
+                ? "Finds songs other people group with yours, then keeps the ones that actually sound right next to your picks: similar key, close tempo, matching energy."
                 : "Finds songs other people group with yours. No check on how they sound together."}
             </p>
           </div>
@@ -108,7 +117,8 @@ export default function TryIt() {
               step={1}
               value={k}
               onChange={(e) => setK(parseInt(e.target.value, 10))}
-              className="accent-(color:--color-accent) w-full"
+              className="slider"
+              style={{ "--fill": `${((k - 5) / 20) * 100}%` } as React.CSSProperties}
               aria-label="Number of recommendations"
             />
             <div className="num flex justify-between text-[0.7rem] text-(color:--color-fg-dim)">
@@ -121,18 +131,18 @@ export default function TryIt() {
             onClick={run}
             className={cn(
               "mt-6 flex w-full items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold",
-              "transition-all duration-150 active:scale-[0.985]",
+              "transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98]",
               canRun && !loading
-                ? "bg-(color:--color-accent) text-black hover:bg-(color:--color-accent-hover)"
+                ? "bg-(color:--color-accent) text-black shadow-[0_10px_28px_-10px_rgba(30,215,96,0.55),inset_0_1px_0_rgba(255,255,255,0.35)] hover:-translate-y-px hover:bg-(color:--color-accent-hover) hover:shadow-[0_14px_32px_-10px_rgba(30,215,96,0.65),inset_0_1px_0_rgba(255,255,255,0.35)]"
                 : "bg-white/[0.05] text-(color:--color-fg-dim) cursor-not-allowed",
             )}
           >
-            <Sparkles size={16} strokeWidth={2} />
-            {loading ? "Thinking..." : "Recommend"}
+            <Waveform size={17} weight="bold" />
+            {loading ? "Finding songs..." : "Recommend"}
           </button>
           {err && (
             <p className="mt-3 flex items-center gap-2 text-xs text-(color:--color-danger)">
-              <AlertCircle size={14} /> {err}
+              <WarningCircle size={14} /> {err}
             </p>
           )}
         </GlassCard>
@@ -157,49 +167,65 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 function ModeSwitcher({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
-  const opts: { value: Mode; label: string }[] = [
-    { value: "search", label: "Search for songs" },
-    { value: "sample", label: "Pick a sample playlist" },
-  ];
   return (
-    <div className="mt-4 grid grid-cols-2 gap-1 rounded-full bg-black/40 p-1">
-      {opts.map((o) => (
-        <button
-          key={o.value}
-          onClick={() => onChange(o.value)}
-          className={cn(
-            "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-            mode === o.value
-              ? "bg-white/[0.07] text-(color:--color-fg)"
-              : "text-(color:--color-fg-muted) hover:text-(color:--color-fg)",
-          )}
-        >
-          {o.label}
-        </button>
-      ))}
+    <div className="mt-4">
+      <Segmented<Mode>
+        id="mode"
+        options={[
+          { value: "search", label: "Search for songs" },
+          { value: "sample", label: "Pick a sample playlist" },
+        ]}
+        value={mode}
+        onChange={onChange}
+      />
     </div>
   );
 }
 
+// iOS-style segmented control: a single glass pill slides between options
+// via layoutId instead of each button repainting its own background.
 function Segmented<T extends string>({
-  options, value, onChange,
-}: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void }) {
+  id, options, value, onChange, accent = false,
+}: {
+  id: string;
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+  accent?: boolean;
+}) {
   return (
-    <div className="grid grid-cols-2 gap-1 rounded-full bg-black/40 p-1">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          onClick={() => onChange(o.value)}
-          className={cn(
-            "rounded-full px-3 py-2 text-xs font-medium transition-colors",
-            value === o.value
-              ? "bg-(color:--color-accent)/15 text-(color:--color-accent)"
-              : "text-(color:--color-fg-muted) hover:text-(color:--color-fg)",
-          )}
-        >
-          {o.label}
-        </button>
-      ))}
+    <div className="grid grid-cols-2 gap-1 rounded-full border border-white/[0.05] bg-black/40 p-1">
+      {options.map((o) => {
+        const isActive = value === o.value;
+        return (
+          <button
+            key={o.value}
+            onClick={() => onChange(o.value)}
+            className={cn(
+              "relative rounded-full px-3 py-1.5 text-xs font-medium",
+              "outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-(color:--color-accent)/40",
+              isActive
+                ? accent
+                  ? "text-(color:--color-accent)"
+                  : "text-(color:--color-fg)"
+                : "text-(color:--color-fg-dim) hover:text-(color:--color-fg)",
+            )}
+          >
+            {isActive && (
+              <motion.span
+                layoutId={`seg-${id}`}
+                aria-hidden="true"
+                transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.7 }}
+                className={cn(
+                  "absolute inset-0 rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]",
+                  accent ? "bg-(color:--color-accent)/[0.13]" : "bg-white/[0.08]",
+                )}
+              />
+            )}
+            <span className="relative z-10">{o.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -222,12 +248,12 @@ function SearchPanel({ onAdd }: { onAdd: (t: TrackHit) => void }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="relative">
-        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-(color:--color-fg-dim)" />
+        <MagnifyingGlass size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-(color:--color-fg-dim)" />
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search"
-          className="w-full rounded-full border border-white/[0.08] bg-black/40 py-2.5 pl-10 pr-3 text-sm text-(color:--color-fg) placeholder:text-(color:--color-fg-dim) outline-none focus:border-(color:--color-accent)/40"
+          className="w-full rounded-full border border-white/[0.08] bg-black/40 py-2.5 pl-10 pr-3 text-sm text-(color:--color-fg) placeholder:text-(color:--color-fg-dim) outline-none transition-[border-color,box-shadow] duration-200 focus:border-(color:--color-accent)/40 focus:shadow-[0_0_0_3px_rgba(30,215,96,0.12)]"
         />
       </div>
       {busy && <p className="text-xs text-(color:--color-fg-dim)">Searching...</p>}
@@ -365,7 +391,7 @@ function Results({ recs, loading }: { recs: Recommendation[] | null; loading: bo
         <SectionLabel>Suggestions</SectionLabel>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-[88px] animate-pulse rounded-2xl bg-white/[0.04]" />
+            <div key={i} className="skeleton h-[88px] rounded-2xl" />
           ))}
         </div>
       </section>
@@ -407,7 +433,7 @@ function RecsList({ recs }: { recs: Recommendation[] }) {
             onClick={playAll}
             className="group flex items-center gap-1.5 rounded-full bg-white/[0.06] px-3.5 py-1.5 text-xs font-medium text-(color:--color-fg-muted) transition-all hover:bg-(color:--color-accent) hover:text-black active:scale-95"
           >
-            <Play size={11} fill="currentColor" className="ml-px" />
+            <Play size={11} weight="fill" className="ml-px" />
             Play all
           </button>
         )}

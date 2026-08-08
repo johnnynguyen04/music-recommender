@@ -4,7 +4,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "Music Recommender — compare three ways to recommend the next song";
+export const alt = "Music Recommender: three ways to pick the next song";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Pause, Play } from "lucide-react";
+import { CircleNotch, Pause, Play } from "@phosphor-icons/react";
 import { useAudio, type TrackInfo } from "@/lib/audioPlayer";
 import { cn } from "@/lib/utils";
 
@@ -55,11 +55,11 @@ export default function PlayButton({
       )}
     >
       {loading ? (
-        <Loader2 size={iconSize} className="animate-spin" />
+        <CircleNotch size={iconSize} className="animate-spin" />
       ) : playing ? (
-        <Pause size={iconSize} fill="currentColor" />
+        <Pause size={iconSize} weight="fill" />
       ) : (
-        <Play size={iconSize} fill="currentColor" className="ml-[1px]" />
+        <Play size={iconSize} weight="fill" className="ml-[1px]" />
       )}
     </button>
   );

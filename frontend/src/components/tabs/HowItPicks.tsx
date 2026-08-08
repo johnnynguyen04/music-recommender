@@ -15,8 +15,11 @@ export default function HowItPicks() {
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.5fr_1fr]">
       <div className="flex flex-col gap-6">
-        <header className="flex flex-col gap-2">
-          <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
+        <header className="flex flex-col gap-3">
+          <span className="text-[0.66rem] font-medium uppercase tracking-[0.2em] text-(color:--color-fg-dim)">
+            Method
+          </span>
+          <h1 className="text-balance text-5xl font-bold leading-[0.98] tracking-[-0.035em] md:text-6xl">
             How it picks.
           </h1>
           <p className="max-w-[60ch] text-(color:--color-fg-muted) leading-relaxed">
@@ -30,7 +33,7 @@ export default function HowItPicks() {
           <Block
             kicker="01"
             title="Listening pattern"
-            body="The model has seen thousands of real playlists, so it knows which songs people tend to put together. If your starting songs show up alongside country music in lots of those playlists, you get country suggestions back. No genre tags, no editorial taste — just who-plays-what."
+            body="The model has seen thousands of real playlists, so it knows which songs people tend to put together. If your starting songs show up alongside country music in lots of those playlists, you get country suggestions back. No genre tags, no editorial taste. Just who-plays-what."
           />
           <Block
             kicker="02"
@@ -54,13 +57,20 @@ export default function HowItPicks() {
             <span className="ml-2 text-xs text-(color:--color-fg-muted)">Music fit</span>
           </div>
         </div>
-        <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-white/[0.05]">
+        <div className="mt-4 flex h-2 w-full gap-[2px]">
           <motion.div
             initial={{ scaleX: 0 }}
-            animate={{ scaleX: cfPct / 100 }}
+            animate={{ scaleX: 1 }}
             transition={{ duration: 0.95, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
-            style={{ originX: 0 }}
-            className="h-full w-full bg-(color:--color-accent)"
+            style={{ originX: 0, width: `${cfPct}%` }}
+            className="h-full rounded-full bg-(color:--color-accent) shadow-[0_2px_10px_-2px_rgba(30,215,96,0.5)]"
+          />
+          <motion.div
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ duration: 0.95, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
+            style={{ originX: 1, width: `${fitPct}%` }}
+            className="h-full rounded-full bg-white/[0.18]"
           />
         </div>
         <p className="mt-5 text-xs leading-relaxed text-(color:--color-fg-muted)">

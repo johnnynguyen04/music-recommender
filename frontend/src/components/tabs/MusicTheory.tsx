@@ -14,8 +14,11 @@ export default function MusicTheory() {
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1fr] items-start">
       <div className="flex flex-col gap-6">
-        <header className="flex flex-col gap-2">
-          <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
+        <header className="flex flex-col gap-3">
+          <span className="text-[0.66rem] font-medium uppercase tracking-[0.2em] text-(color:--color-fg-dim)">
+            Theory
+          </span>
+          <h1 className="text-balance text-5xl font-bold leading-[0.98] tracking-[-0.035em] md:text-6xl">
             The Camelot wheel.
           </h1>
           <p className="max-w-[60ch] text-(color:--color-fg-muted) leading-relaxed">
@@ -65,9 +68,9 @@ export default function MusicTheory() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-      <div className="num text-2xl font-semibold text-(color:--color-accent)">{value}</div>
-      <div className="text-[0.7rem] uppercase tracking-[0.12em] text-(color:--color-fg-dim)">{label}</div>
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+      <div className="num text-[1.7rem] font-semibold leading-none tracking-tight text-(color:--color-accent)">{value}</div>
+      <div className="mt-1.5 text-[0.66rem] uppercase tracking-[0.14em] text-(color:--color-fg-dim)">{label}</div>
     </div>
   );
 }
@@ -118,7 +121,7 @@ function CamelotSVG({ seed, candidates }: { seed: string; candidates: string[] }
               y={cy + (rOuter - 22) * Math.sin(ang)}
               fill={isOuterSeed ? "#1ed760" : "#e5e5e5"}
               fontSize="11"
-              fontFamily="var(--font-jetbrains-mono)"
+              fontFamily="var(--font-geist-mono)"
               fontWeight="500"
               textAnchor="middle"
               dominantBaseline="middle"
@@ -130,7 +133,7 @@ function CamelotSVG({ seed, candidates }: { seed: string; candidates: string[] }
               y={cy + (rInner - 22) * Math.sin(ang)}
               fill={isInnerSeed ? "#1ed760" : "#a3a3a3"}
               fontSize="9.5"
-              fontFamily="var(--font-jetbrains-mono)"
+              fontFamily="var(--font-geist-mono)"
               fontWeight="500"
               textAnchor="middle"
               dominantBaseline="middle"
@@ -140,10 +143,25 @@ function CamelotSVG({ seed, candidates }: { seed: string; candidates: string[] }
             {/* candidate dots sit OUTWARD along the radial line from center,
                 so they stay symmetric no matter where on the wheel they are */}
             {hasOuterCand && !isOuterSeed && (
-              <circle cx={cx + (rOuter + 8) * Math.cos(ang)} cy={cy + (rOuter + 8) * Math.sin(ang)} r="3" fill="#1ed760" />
+              <circle
+                cx={cx + (rOuter + 8) * Math.cos(ang)}
+                cy={cy + (rOuter + 8) * Math.sin(ang)}
+                r="3"
+                fill="#1ed760"
+                className="camelot-dot"
+                style={{ animationDelay: `${i * 0.35}s` }}
+              />
             )}
             {hasInnerCand && !isInnerSeed && (
-              <circle cx={cx + (rInner - 56) * Math.cos(ang)} cy={cy + (rInner - 56) * Math.sin(ang)} r="2.5" fill="#1ed760" opacity="0.85" />
+              <circle
+                cx={cx + (rInner - 56) * Math.cos(ang)}
+                cy={cy + (rInner - 56) * Math.sin(ang)}
+                r="2.5"
+                fill="#1ed760"
+                opacity="0.85"
+                className="camelot-dot"
+                style={{ animationDelay: `${i * 0.35 + 0.6}s` }}
+              />
             )}
           </g>
         );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Music } from "lucide-react";
+import { MusicNotes } from "@phosphor-icons/react";
 import PlayButton from "./PlayButton";
 import { useAudio, type TrackInfo } from "@/lib/audioPlayer";
 import { tintAuroraFromArt } from "@/lib/auroraTint";
@@ -66,7 +66,7 @@ export default function ArtWithPlay({
         />
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-white/[0.06] to-white/[0.01]">
-          <Music
+          <MusicNotes
             size={Math.round(size * 0.36)}
             className="text-(color:--color-fg-dim)"
           />

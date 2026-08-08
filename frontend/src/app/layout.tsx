@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
-import { Manrope, JetBrains_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import LiquidGlassFilter from "@/components/LiquidGlassFilter";
 import { AudioProvider } from "@/lib/audioPlayer";
 import "./globals.css";
 
-const manrope = Manrope({
-  variable: "--font-manrope",
+// Geist reads close to SF Pro, which is most of the Apple feel; the mono
+// cut keeps metric tables and camelot codes in the same voice.
+const geist = Geist({
+  variable: "--font-geist",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -40,10 +40,11 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${manrope.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={`${geist.variable} ${geistMono.variable}`}>
       <body className="min-h-[100dvh]">
         <LiquidGlassFilter />
         <AudioProvider>{children}</AudioProvider>
+        <div className="grain" aria-hidden="true" />
       </body>
     </html>
   );

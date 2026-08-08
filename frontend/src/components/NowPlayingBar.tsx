@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Music, X } from "lucide-react";
+import { MusicNotes, X } from "@phosphor-icons/react";
 import { useAudio } from "@/lib/audioPlayer";
 import PlayButton from "./PlayButton";
 import { cn } from "@/lib/utils";
@@ -49,13 +49,18 @@ export default function NowPlayingBar() {
                 />
               ) : (
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-white/[0.05]">
-                  <Music size={18} className="text-(color:--color-fg-dim)" />
+                  <MusicNotes size={18} className="text-(color:--color-fg-dim)" />
                 </div>
               )}
 
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold leading-tight">
-                  {current.title ?? "Unknown track"}
+                <div className="flex items-center gap-2">
+                  <span aria-hidden="true" className={cn("eq shrink-0", !isPlaying && "paused")}>
+                    <i /><i /><i />
+                  </span>
+                  <span className="truncate text-sm font-semibold leading-tight">
+                    {current.title ?? "Unknown track"}
+                  </span>
                 </div>
                 <div className="truncate text-xs text-(color:--color-fg-muted) leading-tight">
                   {current.artist ?? ""}
@@ -109,9 +114,14 @@ const ScrubBar = ({ ref, ...props }: ScrubBarProps & { ref?: React.RefObject<HTM
       className="group/scrub mt-1.5 h-1 cursor-pointer rounded-full bg-white/[0.08]"
     >
       <div
-        className="h-full rounded-full bg-(color:--color-accent)"
+        className="relative h-full rounded-full bg-(color:--color-accent)"
         style={{ width: `${(props.progress * 100).toFixed(2)}%` }}
-      />
+      >
+        <span
+          aria-hidden="true"
+          className="absolute -right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-white opacity-0 shadow-[0_1px_4px_rgba(0,0,0,0.5)] transition-opacity duration-150 group-hover/scrub:opacity-100"
+        />
+      </div>
     </div>
   );
 };

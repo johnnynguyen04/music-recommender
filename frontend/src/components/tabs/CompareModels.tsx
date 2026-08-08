@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Info } from "lucide-react";
+import { Info, Trophy } from "@phosphor-icons/react";
 import GlassCard from "@/components/GlassCard";
 import { api, type MetricsBlob } from "@/lib/api";
 import { list, item } from "@/lib/motion";
@@ -54,13 +54,27 @@ export default function CompareModels() {
   useEffect(() => { api.metrics().then(setM).catch(() => {}); }, []);
   const comp = m?.comparison;
 
+  // per-column max so each cell can carry a length encoding, and the
+  // winning model per metric can be emphasized instead of a favored row.
+  const colMax: Record<string, number> = {};
+  if (comp) {
+    for (const c of COLS) {
+      colMax[c.key] = Math.max(
+        ...MODELS.map((mod) => (comp[mod.key] as Record<string, number>)?.[c.key] ?? 0),
+      );
+    }
+  }
+
   return (
     <div className="flex flex-col gap-7">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
+      <header className="flex flex-col gap-3">
+        <span className="text-[0.66rem] font-medium uppercase tracking-[0.2em] text-(color:--color-fg-dim)">
+          Evaluation
+        </span>
+        <h1 className="text-balance text-5xl font-bold leading-[0.98] tracking-[-0.035em] md:text-6xl">
           Compare models.
         </h1>
-        <p className="max-w-[65ch] text-(color:--color-fg-muted) leading-relaxed">
+        <p className="max-w-[65ch] text-pretty text-(color:--color-fg-muted) leading-relaxed">
           All three models tested the same way: take 2,000 real Spotify playlists,
           hide the last few songs, ask each model to predict them. Higher is
           better on every column. Nothing was removed when its number came in
@@ -69,21 +83,21 @@ export default function CompareModels() {
       </header>
 
       {!comp ? (
-        <GlassCard className="p-8 text-sm text-(color:--color-fg-muted)">
-          Metrics not loaded yet.
+        <GlassCard className="flex flex-col gap-3 p-6">
+          <div className="skeleton h-5 w-2/5 rounded-md" />
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="skeleton h-12 rounded-xl" />
+          ))}
         </GlassCard>
       ) : (
         <GlassCard className="overflow-hidden p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-[0.7rem] uppercase tracking-[0.14em] text-(color:--color-fg-dim)">
-                  <th className="sticky left-0 z-1 bg-transparent px-6 py-4 text-left font-semibold">Architecture</th>
+                <tr className="text-[0.68rem] uppercase tracking-[0.14em] text-(color:--color-fg-dim)">
+                  <th className="px-6 py-4 text-left font-semibold">Architecture</th>
                   {COLS.map((c) => (
-                    <th
-                      key={c.key}
-                      className="px-4 py-4 text-right font-semibold align-bottom"
-                    >
+                    <th key={c.key} className="px-4 py-4 text-right font-semibold align-bottom">
                       <ColumnLabel label={c.label} help={c.help} />
                     </th>
                   ))}
@@ -92,30 +106,50 @@ export default function CompareModels() {
               <motion.tbody variants={list} initial="initial" animate="animate">
                 {MODELS.map((mod) => {
                   const row = comp[mod.key] as Record<string, number>;
-                  const isHybrid = mod.key === "hybrid";
+                  const isBaselineWinner = mod.key === "classical";
                   return (
                     <motion.tr
                       key={mod.key}
                       variants={item}
-                      className={
-                        "border-t border-white/[0.04] " +
-                        (isHybrid ? "bg-(color:--color-accent)/[0.04]" : "")
-                      }
+                      className="border-t border-white/[0.04] transition-colors duration-200 hover:bg-white/[0.025]"
                     >
                       <td className="px-6 py-4 align-top">
-                        <div className="flex items-center gap-2">
-                          <span className={"h-1.5 w-1.5 rounded-full " + (isHybrid ? "bg-(color:--color-accent)" : "bg-white/30")} />
-                          <div className="flex flex-col">
-                            <span className="font-medium">{mod.label}</span>
-                            <span className="text-[0.7rem] text-(color:--color-fg-dim)">{mod.note}</span>
-                          </div>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="flex items-center gap-1.5 font-medium">
+                            {mod.label}
+                            {isBaselineWinner && (
+                              <span className="inline-flex items-center gap-1 rounded-md bg-(color:--color-accent)/[0.12] px-1.5 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.08em] text-(color:--color-accent)">
+                                <Trophy size={10} weight="fill" /> Best
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-[0.7rem] text-(color:--color-fg-dim)">{mod.note}</span>
                         </div>
                       </td>
-                      {COLS.map((c) => (
-                        <td key={c.key} className={"num px-4 py-4 text-right " + (isHybrid ? "text-(color:--color-accent)" : "")}>
-                          {fmt(row?.[c.key], c.pct)}
-                        </td>
-                      ))}
+                      {COLS.map((c) => {
+                        const v = row?.[c.key];
+                        const isBest = v !== undefined && v === colMax[c.key];
+                        const frac = v !== undefined && colMax[c.key] > 0 ? v / colMax[c.key] : 0;
+                        return (
+                          <td key={c.key} className="px-4 py-4 text-right align-top">
+                            <span className={"num " + (isBest ? "font-semibold text-(color:--color-accent)" : "text-(color:--color-fg-muted)")}>
+                              {fmt(v, c.pct)}
+                            </span>
+                            <motion.div
+                              initial={{ scaleX: 0 }}
+                              animate={{ scaleX: 1 }}
+                              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+                              style={{ originX: 1 }}
+                              className="mt-1.5 ml-auto h-[3px] w-full max-w-[72px] overflow-hidden rounded-full bg-white/[0.05]"
+                            >
+                              <div
+                                className={"ml-auto h-full rounded-full " + (isBest ? "bg-(color:--color-accent)" : "bg-white/[0.22]")}
+                                style={{ width: `${Math.round(frac * 100)}%` }}
+                              />
+                            </motion.div>
+                          </td>
+                        );
+                      })}
                     </motion.tr>
                   );
                 })}

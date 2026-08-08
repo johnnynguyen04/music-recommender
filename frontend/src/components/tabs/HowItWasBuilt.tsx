@@ -12,8 +12,11 @@ export default function HowItWasBuilt() {
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.6fr_1fr] items-start">
       <div className="flex flex-col gap-6">
-        <header className="flex flex-col gap-2">
-          <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
+        <header className="flex flex-col gap-3">
+          <span className="text-[0.66rem] font-medium uppercase tracking-[0.2em] text-(color:--color-fg-dim)">
+            Data
+          </span>
+          <h1 className="text-balance text-5xl font-bold leading-[0.98] tracking-[-0.035em] md:text-6xl">
             How it was built.
           </h1>
         </header>
@@ -45,35 +48,41 @@ export default function HowItWasBuilt() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3">
-        <GlassCard className="p-5">
-          <div className="text-[0.7rem] uppercase tracking-[0.16em] text-(color:--color-fg-dim)">
-            Training playlists
-          </div>
-          <div className="num mt-1 text-3xl font-semibold text-(color:--color-fg)">20,000</div>
-          <div className="mt-1 text-xs text-(color:--color-fg-muted)">First 20 slices of the MPD</div>
-        </GlassCard>
+      <GlassCard className="self-start">
+        <div className="flex flex-col divide-y divide-white/[0.05]">
+          <StatRow label="Training playlists" value="20,000" sub="First 20 slices of the MPD" />
+          <StatRow label="Held-out for testing" value="2,000" sub="Per-playlist tail holdout, 20%" />
+          {mr ? (
+            <StatRow
+              label="Music feature coverage"
+              value={`${(mr.match_rate * 100).toFixed(1)}%`}
+              sub={`${mr.matched.toLocaleString()} of ${mr.total_mpd_tracks.toLocaleString()} tracks`}
+              accent
+            />
+          ) : (
+            <div className="flex flex-col gap-2 p-5">
+              <div className="skeleton h-3 w-2/5 rounded" />
+              <div className="skeleton h-8 w-1/3 rounded-md" />
+            </div>
+          )}
+        </div>
+      </GlassCard>
+    </div>
+  );
+}
 
-        <GlassCard className="p-5">
-          <div className="text-[0.7rem] uppercase tracking-[0.16em] text-(color:--color-fg-dim)">
-            Held-out for testing
-          </div>
-          <div className="num mt-1 text-3xl font-semibold text-(color:--color-fg)">2,000</div>
-          <div className="mt-1 text-xs text-(color:--color-fg-muted)">Per-playlist tail holdout, 20%</div>
-        </GlassCard>
-
-        <GlassCard className="p-5">
-          <div className="text-[0.7rem] uppercase tracking-[0.16em] text-(color:--color-fg-dim)">
-            Music feature coverage
-          </div>
-          <div className="num mt-1 text-3xl font-semibold text-(color:--color-accent)">
-            {mr ? `${(mr.match_rate * 100).toFixed(1)}%` : "-"}
-          </div>
-          <div className="mt-1 text-xs text-(color:--color-fg-muted)">
-            {mr ? `${mr.matched.toLocaleString()} of ${mr.total_mpd_tracks.toLocaleString()} tracks` : "loading"}
-          </div>
-        </GlassCard>
+function StatRow({ label, value, sub, accent = false }: {
+  label: string; value: string; sub: string; accent?: boolean;
+}) {
+  return (
+    <div className="p-5">
+      <div className="text-[0.66rem] uppercase tracking-[0.16em] text-(color:--color-fg-dim)">
+        {label}
       </div>
+      <div className={"num mt-1.5 text-[2rem] font-semibold leading-none tracking-tight " + (accent ? "text-(color:--color-accent)" : "text-(color:--color-fg)")}>
+        {value}
+      </div>
+      <div className="mt-1.5 text-xs text-(color:--color-fg-muted)">{sub}</div>
     </div>
   );
 }
