@@ -49,7 +49,7 @@ export default function Home() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <AuroraBackground />
+      <AuroraBackground active={!!current} />
       <div
         className={cn(
           "relative z-10 flex min-h-[100dvh] flex-col",

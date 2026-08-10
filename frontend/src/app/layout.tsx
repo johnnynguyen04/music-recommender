@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Figtree, Geist_Mono } from "next/font/google";
 import LiquidGlassFilter from "@/components/LiquidGlassFilter";
 import { AudioProvider } from "@/lib/audioPlayer";
 import "./globals.css";
 
-// Geist reads close to SF Pro, which is most of the Apple feel; the mono
-// cut keeps metric tables and camelot codes in the same voice.
-const geist = Geist({
-  variable: "--font-geist",
+// Figtree is the closest free cut to Spotify's Circular; Geist Mono stays
+// for metric tables and camelot codes.
+const figtree = Figtree({
+  variable: "--font-figtree",
   subsets: ["latin"],
 });
 
@@ -40,7 +40,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geist.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`${figtree.variable} ${geistMono.variable}`}>
       <body className="min-h-[100dvh]">
         <LiquidGlassFilter />
         <AudioProvider>{children}</AudioProvider>

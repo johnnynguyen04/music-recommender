@@ -5,10 +5,9 @@ interface GlassCardProps extends HTMLAttributes<HTMLDivElement> {
   hover?: boolean;
 }
 
-// Liquid glass card. The .liquid-lens span underneath the content uses
-// backdrop-filter with the global SVG displacement filter to bend light
-// from whatever's behind it (aurora, other content). Content sits on z-10
-// above the lens so it stays crisp.
+// Opaque content surface, Spotify-style: flat #121212-family fill, hairline
+// border, small radius. Glass (the .liquid-lens treatment) is reserved for
+// floating chrome only — the nav island and the now-playing bar.
 export default function GlassCard({
   className,
   hover = false,
@@ -18,17 +17,14 @@ export default function GlassCard({
   return (
     <div
       className={cn(
-        "relative isolate overflow-hidden rounded-3xl",
+        "relative rounded-xl border border-white/[0.06] bg-(color:--color-surface)",
+        "shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_8px_24px_-16px_rgba(0,0,0,0.5)]",
         hover && "card-hover",
         className,
       )}
       {...rest}
     >
-      <span
-        aria-hidden="true"
-        className="liquid-lens pointer-events-none absolute inset-0 rounded-[inherit]"
-      />
-      <div className="relative z-10">{children}</div>
+      {children}
     </div>
   );
 }

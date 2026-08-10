@@ -68,7 +68,7 @@ export default function MusicTheory() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+    <div className="rounded-xl border border-white/[0.06] bg-(color:--color-surface) px-4 py-3.5">
       <div className="num text-[1.7rem] font-semibold leading-none tracking-tight text-(color:--color-accent)">{value}</div>
       <div className="mt-1.5 text-[0.66rem] uppercase tracking-[0.14em] text-(color:--color-fg-dim)">{label}</div>
     </div>

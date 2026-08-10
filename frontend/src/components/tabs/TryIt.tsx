@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MagnifyingGlass, X, Waveform, WarningCircle, Play } from "@phosphor-icons/react";
 import GlassCard from "@/components/GlassCard";
@@ -21,8 +21,43 @@ export default function TryIt() {
   const [recs, setRecs] = useState<Recommendation[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // true while the suggestions shown are the auto-loaded example
+  const [seeded, setSeeded] = useState(false);
+  const userRanRef = useRef(false);
+
+  // pre-seed the page with a real example so the first screen has music on
+  // it instead of an empty form. Backs off silently if the API is asleep,
+  // and never overwrites a run the user started themselves.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const sp = await api.samplePlaylists(1);
+        const p = sp.playlists[0];
+        if (!p || cancelled || userRanRef.current) return;
+        setLoading(true);
+        const r = await api.recommend({
+          playlist_id: p.playlist_id,
+          recent_track_ids: [],
+          model: "hybrid",
+          k: 9,
+        });
+        if (!cancelled && !userRanRef.current) {
+          setRecs(r.recommendations);
+          setSeeded(true);
+        }
+      } catch {
+        // API unavailable: stay with the empty state
+      } finally {
+        if (!cancelled && !userRanRef.current) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const run = useCallback(async () => {
+    userRanRef.current = true;
+    setSeeded(false);
     setLoading(true); setErr(null);
     try {
       const recent = seeds.map((s) => s.track_id);
@@ -46,12 +81,8 @@ export default function TryIt() {
   return (
     <div className="flex flex-col gap-8">
       <header className="flex flex-col gap-3">
-        <span className="inline-flex w-max items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-[0.66rem] font-medium uppercase tracking-[0.2em] text-(color:--color-fg-muted)">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-(color:--color-accent) opacity-60" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-(color:--color-accent)" />
-          </span>
-          Live demo
+        <span className="text-[0.66rem] font-medium uppercase tracking-[0.2em] text-(color:--color-fg-dim)">
+          Demo
         </span>
         <h1 className="text-balance text-5xl font-bold leading-[0.98] tracking-[-0.035em] md:text-6xl">
           Recommend a song.
@@ -148,7 +179,7 @@ export default function TryIt() {
         </GlassCard>
       </div>
 
-      <Results recs={recs} loading={loading} />
+      <Results recs={recs} loading={loading} seeded={seeded} />
     </div>
   );
 }
@@ -384,14 +415,16 @@ function SeedList({ seeds, onRemove, onClear }: {
   );
 }
 
-function Results({ recs, loading }: { recs: Recommendation[] | null; loading: boolean }) {
+function Results({ recs, loading, seeded }: {
+  recs: Recommendation[] | null; loading: boolean; seeded: boolean;
+}) {
   if (loading) {
     return (
       <section className="flex flex-col gap-4">
         <SectionLabel>Suggestions</SectionLabel>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="skeleton h-[88px] rounded-2xl" />
+            <div key={i} className="skeleton h-[88px] rounded-xl" />
           ))}
         </div>
       </section>
@@ -405,10 +438,10 @@ function Results({ recs, loading }: { recs: Recommendation[] | null; loading: bo
       </p>
     );
   }
-  return <RecsList recs={recs} />;
+  return <RecsList recs={recs} seeded={seeded} />;
 }
 
-function RecsList({ recs }: { recs: Recommendation[] }) {
+function RecsList({ recs, seeded }: { recs: Recommendation[]; seeded: boolean }) {
   const audio = useAudio();
   const playableCount = recs.filter((r) => r.preview_url).length;
 
@@ -427,7 +460,14 @@ function RecsList({ recs }: { recs: Recommendation[] }) {
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-end justify-between">
-        <SectionLabel>Suggestions</SectionLabel>
+        <div className="flex flex-col gap-1">
+          <SectionLabel>Suggestions</SectionLabel>
+          {seeded && (
+            <p className="text-xs text-(color:--color-fg-dim)">
+              From a sample playlist. Add your own songs above to make it yours.
+            </p>
+          )}
+        </div>
         {playableCount > 1 && (
           <button
             onClick={playAll}
@@ -448,7 +488,7 @@ function RecsList({ recs }: { recs: Recommendation[] }) {
           <motion.li
             key={r.track_id}
             variants={item}
-            className="card-hover flex cursor-pointer items-center gap-3 rounded-2xl border border-white/[0.08] bg-black/40 p-3"
+            className="card-hover flex cursor-pointer items-center gap-3 rounded-xl border border-white/[0.06] bg-(color:--color-surface) p-3"
           >
             <ArtWithPlay
               trackId={r.track_id}
