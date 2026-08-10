@@ -95,7 +95,7 @@ export default function TryIt() {
       </header>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
-        <GlassCard className="p-6 md:p-7">
+        <GlassCard className="min-w-0 p-6 md:p-7">
           <SectionLabel>Songs to start with</SectionLabel>
           <ModeSwitcher mode={mode} onChange={setMode} />
           <div className="mt-5">
@@ -111,7 +111,7 @@ export default function TryIt() {
           )}
         </GlassCard>
 
-        <GlassCard className="p-6 md:p-7">
+        <GlassCard className="min-w-0 p-6 md:p-7">
           <SectionLabel>Options</SectionLabel>
           <div className="mt-4 flex flex-col gap-1.5">
             <span className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-(color:--color-fg-dim)">
@@ -484,11 +484,15 @@ function RecsList({ recs, seeded }: { recs: Recommendation[]; seeded: boolean })
         animate="animate"
         className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
       >
-        {recs.map((r, i) => (
+        {recs.map((r, i) => {
+          const active = audio.current?.id === r.track_id;
+          return (
           <motion.li
             key={r.track_id}
             variants={item}
-            className="card-hover flex cursor-pointer items-center gap-3 rounded-xl border border-white/[0.06] bg-(color:--color-surface) p-3"
+            className="card-hover flex cursor-pointer items-center gap-3 rounded-xl border border-white/[0.06] bg-(color:--color-surface) p-3 transition-colors duration-500"
+            // playing track wears its own art color on the border
+            style={active ? { borderColor: "color-mix(in srgb, var(--art-color) 55%, transparent)" } : undefined}
           >
             <ArtWithPlay
               trackId={r.track_id}
@@ -509,7 +513,8 @@ function RecsList({ recs, seeded }: { recs: Recommendation[]; seeded: boolean })
               </div>
             </div>
           </motion.li>
-        ))}
+          );
+        })}
       </motion.ul>
     </section>
   );

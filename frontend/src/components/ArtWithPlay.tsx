@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { MusicNotes } from "@phosphor-icons/react";
 import PlayButton from "./PlayButton";
 import { useAudio, type TrackInfo } from "@/lib/audioPlayer";
-import { tintAuroraFromArt } from "@/lib/auroraTint";
+import { setArtColorFromImage } from "@/lib/artColor";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -34,10 +34,10 @@ export default function ArtWithPlay({
   const active = current?.id === trackId;
   const buttonSize = Math.max(28, Math.round(size * 0.5));
 
-  // when this track becomes the playing one, tint aurora from its album art
+  // when this track becomes the playing one, its art color drives the page
   useEffect(() => {
     if (!active || !art) return;
-    void tintAuroraFromArt(art);
+    void setArtColorFromImage(art);
   }, [active, art]);
 
   const track: TrackInfo = {

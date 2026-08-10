@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Music Recommender",
     description:
-      "Three models compared on the same Spotify playlists, with album-art-reactive aurora and 30-second previews.",
+      "Three models compared on the same Spotify playlists, with 30-second previews of every recommendation.",
     type: "website",
     siteName: "Music Recommender",
   },

@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { MusicNotes, X } from "@phosphor-icons/react";
+import { MusicNotes, SpeakerHigh, SpeakerLow, SpeakerX, X } from "@phosphor-icons/react";
 import { useAudio } from "@/lib/audioPlayer";
 import PlayButton from "./PlayButton";
 import { cn } from "@/lib/utils";
@@ -12,8 +12,11 @@ import { cn } from "@/lib/utils";
 // Click the scrub bar to seek anywhere in the 30s preview.
 
 export default function NowPlayingBar() {
-  const { current, progress, seek, stop, isPlaying } = useAudio();
+  const { current, progress, seek, stop, isPlaying, volume, setVolume } = useAudio();
   const scrubRef = useRef<HTMLDivElement | null>(null);
+  // remember the pre-mute level so the speaker icon can toggle back to it
+  const lastVolRef = useRef(1);
+  if (volume > 0) lastVolRef.current = volume;
 
   return (
     <AnimatePresence>
@@ -28,12 +31,23 @@ export default function NowPlayingBar() {
         >
           <div
             className={cn(
-              "relative isolate overflow-hidden rounded-2xl",
+              "npb-glow relative isolate overflow-hidden rounded-2xl",
               "border border-white/[0.10]",
-              "shadow-[0_24px_60px_-20px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.08)]",
             )}
           >
-            {/* glass lens layer (same effect as cards) */}
+            {/* blurred album art backdrop, apple-music style, under a dark
+                scrim so the text stays readable on bright artwork */}
+            {current.art_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={current.art_url}
+                alt=""
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 h-full w-full scale-150 object-cover opacity-30 blur-2xl saturate-150"
+              />
+            )}
+            <span aria-hidden="true" className="pointer-events-none absolute inset-0 bg-black/55" />
+            {/* glass lens layer (same effect as the nav island) */}
             <span
               aria-hidden="true"
               className="liquid-lens pointer-events-none absolute inset-0 rounded-[inherit]"
@@ -70,6 +84,33 @@ export default function NowPlayingBar() {
                   progress={progress}
                   isPlaying={isPlaying}
                   onSeek={seek}
+                />
+              </div>
+
+              <div className="hidden items-center gap-1.5 sm:flex">
+                <button
+                  onClick={() => setVolume(volume === 0 ? lastVolRef.current : 0)}
+                  aria-label={volume === 0 ? "Unmute" : "Mute"}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-(color:--color-fg-muted) transition-colors hover:text-(color:--color-fg)"
+                >
+                  {volume === 0 ? (
+                    <SpeakerX size={16} />
+                  ) : volume < 0.5 ? (
+                    <SpeakerLow size={16} />
+                  ) : (
+                    <SpeakerHigh size={16} />
+                  )}
+                </button>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={Math.round(volume * 100)}
+                  onChange={(e) => setVolume(parseInt(e.target.value, 10) / 100)}
+                  className="slider slider-sm w-[72px]"
+                  style={{ "--fill": `${Math.round(volume * 100)}%` } as React.CSSProperties}
+                  aria-label="Preview volume"
                 />
               </div>
 
@@ -114,8 +155,11 @@ const ScrubBar = ({ ref, ...props }: ScrubBarProps & { ref?: React.RefObject<HTM
       className="group/scrub mt-1.5 h-1 cursor-pointer rounded-full bg-white/[0.08]"
     >
       <div
-        className="relative h-full rounded-full bg-(color:--color-accent)"
-        style={{ width: `${(props.progress * 100).toFixed(2)}%` }}
+        className="relative h-full rounded-full"
+        style={{
+          width: `${(props.progress * 100).toFixed(2)}%`,
+          background: "var(--art-color)",
+        }}
       >
         <span
           aria-hidden="true"

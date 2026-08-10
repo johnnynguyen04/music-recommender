@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import Brand from "@/components/Brand";
 import GithubMark from "@/components/icons/GithubMark";
-import AuroraBackground from "@/components/AuroraBackground";
+import Backdrop from "@/components/Backdrop";
 import NowPlayingBar from "@/components/NowPlayingBar";
 import TabNav, { TABS, type TabKey } from "@/components/TabNav";
 import { useAudio } from "@/lib/audioPlayer";
@@ -17,10 +17,9 @@ import HowItWasBuilt from "@/components/tabs/HowItWasBuilt";
 import About from "@/components/tabs/About";
 import { tabPage } from "@/lib/motion";
 
-// first-load entrance: aurora fades in via CSS, header slides up after,
-// main content lands last. Total choreography ~1s. Subsequent tab
-// switches use only the inner tabPage variant, so the header doesn't
-// re-animate every time.
+// first-load entrance: header slides up first, main content lands after.
+// Total choreography ~1s. Subsequent tab switches use only the inner
+// tabPage variant, so the header doesn't re-animate every time.
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
@@ -49,7 +48,7 @@ export default function Home() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <AuroraBackground active={!!current} />
+      <Backdrop active={!!current} />
       <div
         className={cn(
           "relative z-10 flex min-h-[100dvh] flex-col",

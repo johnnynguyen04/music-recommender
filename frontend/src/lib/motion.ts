@@ -1,6 +1,5 @@
 // shared framer-motion variants. one source of truth so the motion feels
-// consistent across tabs. keep these conservative — the shader background
-// is doing the heavy lifting visually.
+// consistent across tabs. keep these conservative.
 
 import type { Variants, Transition } from "framer-motion";
 

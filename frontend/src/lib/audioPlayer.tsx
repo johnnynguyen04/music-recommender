@@ -12,7 +12,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { resetAuroraTint } from "./auroraTint";
+import { resetArtColor } from "./artColor";
 
 export interface TrackInfo {
   id: string;
@@ -35,6 +35,8 @@ interface AudioCtx extends AudioState {
   stop: () => void;
   seek: (progress: number) => void;
   playQueue: (tracks: TrackInfo[]) => void;
+  volume: number;
+  setVolume: (v: number) => void;
 }
 
 const Ctx = createContext<AudioCtx | null>(null);
@@ -109,6 +111,25 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     el.currentTime = Math.max(0, Math.min(1, progress)) * el.duration;
   }, []);
 
+  // volume, persisted across visits. iOS ignores element volume; the
+  // control is hidden on touch layouts so that's fine.
+  const [volume, setVolumeState] = useState(1);
+  useEffect(() => {
+    const raw = localStorage.getItem("preview-volume");
+    const saved = raw === null ? NaN : Number(raw);
+    if (Number.isFinite(saved)) {
+      const v = Math.max(0, Math.min(1, saved));
+      setVolumeState(v);
+      if (audioRef.current) audioRef.current.volume = v;
+    }
+  }, []);
+  const setVolume = useCallback((v: number) => {
+    const clamped = Math.max(0, Math.min(1, v));
+    if (audioRef.current) audioRef.current.volume = clamped;
+    setVolumeState(clamped);
+    try { localStorage.setItem("preview-volume", String(clamped)); } catch {}
+  }, []);
+
   const playQueue = useCallback(
     (tracks: TrackInfo[]) => {
       const playable = tracks.filter((t) => t.preview_url);
@@ -120,12 +141,12 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     [startTrack],
   );
 
-  // reset aurora to spotify-green whenever the active track clears
+  // settle the art color back to spotify green when the active track clears
   const prevId = useRef<string | null>(null);
   useEffect(() => {
     const id = state.current?.id ?? null;
     if (prevId.current !== null && id === null) {
-      resetAuroraTint();
+      resetArtColor();
     }
     prevId.current = id;
   }, [state.current]);
@@ -165,7 +186,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   }, [state.isPlaying]);
 
   return (
-    <Ctx.Provider value={{ ...state, toggle, stop, seek, playQueue }}>
+    <Ctx.Provider value={{ ...state, toggle, stop, seek, playQueue, volume, setVolume }}>
       {children}
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio ref={audioRef} preload="none" />
